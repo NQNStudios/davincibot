@@ -1,4 +1,10 @@
 import * as moment from "moment";
+import { JsonConvert } from "json2typescript";
+
+interface IdeaJson
+{
+    children: Array<IdeaJson>;
+}
 
 // The basic unit of things the user wants to do. Ideas are all created in
 // unstructured form, and structured later by dividing and subdividing them
@@ -8,9 +14,9 @@ export class Idea
     // Index definition
     [key:string]: any;
 
-    // Each Idea will have a unique id numbered upwards from 0.
-    // TODO this will need to be serialized/deserialized when Tasks are reloaded from
-    // a previous session!
+    // Each Idea will have a unique id numbered upwards from 0.  This doesn't
+    // need to be serialized because each deserialization will increment count
+    // in the constructor before restoring the Idea's original id
     static Count: number = 0;
 
     id: number;
@@ -24,9 +30,29 @@ export class Idea
     private _duration: moment.Duration = moment.duration(0);
 
     // Create an unstructured Idea
-    constructor(name: string) {
+    constructor(name: string = '') {
         this.id = Idea.Count++;
         this.name = name;
+    }
+
+    static converter = new JsonConvert();
+
+    static ParseString(json: string): Idea {
+        // Parse the root Idea object naively
+        let jsonObject: IdeaJson = JSON.parse(json) as IdeaJson;
+        return Idea.Parse(jsonObject);
+    }
+
+    // Recursively deserialize an Idea from a JSON object
+    static Parse(json: IdeaJson): Idea {
+        // Generate a TypeScript object from the object
+        let full_object = Idea.converter.deserializeObject(json, Idea);
+        // Apply Parse() to its children recursively
+        let children = json.children;
+        for (let i = 0; i < children.length; ++i) {
+            full_object.children.push(Idea.Parse(children[i]));
+        }
+        return full_object;
     }
 
     // Calculate an attribute that is determined by either the sum or average
