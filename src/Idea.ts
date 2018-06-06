@@ -1,8 +1,13 @@
+import * as moment from "moment";
+
 // The basic unit of things the user wants to do. Ideas are all created in
 // unstructured form, and structured later by dividing and subdividing them
 // into smaller Ideas.
 export class Idea
 {
+    // Index definition
+    [key:string]: any;
+
     // Each Idea will have a unique id numbered upwards from 0.
     // TODO this will need to be serialized/deserialized when Tasks are reloaded from
     // a previous session!
@@ -14,7 +19,9 @@ export class Idea
     tags: { [id: string]: boolean; } = {};
 
     children: Array<Idea> = [];
+
     private _progress: number = 0;
+    private _duration: moment.Duration = moment.duration(0);
 
     // Create an unstructured Idea
     constructor(name: string) {
@@ -22,38 +29,59 @@ export class Idea
         this.name = name;
     }
 
-    // Check how near this Idea is to tangible completion
-    get progress(): number {
-        // Only Ideas without children can define their own progress
+    // Calculate an attribute that is determined by either the sum or average
+    // of that attribute in this Idea's children
+    private getOverallAttribute(attribute: string, sumZero: any = 0, useAverage: boolean): any {
         if (this.children.length == 0) {
-            return this._progress;
+            return this[`_${attribute}`];
         }
-        // If an Idea has children, its progress is measured as the average of
-        // its children's progress values
         else {
-            let sum = 0;
+            let sum = sumZero;
             for (let i = 0; i < this.children.length; ++i) {
                 let child = this.children[i];
-                sum += child.progress;
+                sum += child[attribute];
             }
-            return sum / this.children.length;
+
+            let value = sum;
+            if (useAverage) {
+                value /= this.children.length;
+            }
+
+            return value;
         }
+    }
+
+    private setOverallAttribute(attribute: string, value: any) {
+        if (this.children.length == 0) {
+            this[`_${attribute}`] = value;
+        }
+        else {
+            throw new Error(`Tried to directly set the ${attribute} of a task with children.`);
+        }
+    }
+
+    // Check how near this Idea is to tangible completion
+    get progress(): number {
+        return this.getOverallAttribute('progress', 0, true) as number;
     }
 
     // Set how near this Idea is to tangible completion --
     // Only valid for an undivided Idea
     set progress(value: number) {
-        if (this.children.length == 0) {
-            if (value >= 0 && value <= 1) {
-                this._progress = value;
-            }
-            else {
-                throw new Error(`Tried to set an Idea's progress out of bounds [0:1]: ${value}`);
-            }
+        if (value < 0 || value > 1) {
+            throw new Error(`Tried to set an Idea's progress out of bounds [0:1]: ${value}`);
         }
         else {
-            throw new Error('Tried to directly set the progress of a task with children.');
+            this.setOverallAttribute('progress', value);
         }
+    }
+
+    get duration(): moment.Duration {
+        return this.getOverallAttribute('duration', moment.duration(0), false) as moment.Duration;
+    }
+
+    set duration(value: moment.Duration) {
+        this.setOverallAttribute('duration', value);
     }
 
     // Create a new Idea as a child of this one
