@@ -11,7 +11,7 @@ export class Idea
     id: number;
     name: string;
     description: string = '';
-    tags: Array<string> = [];
+    tags: { [id: string]: boolean; } = {};
 
     children: Array<Idea> = [];
     private _progress: number = 0;
@@ -56,9 +56,58 @@ export class Idea
         }
     }
 
+    // Create a new Idea as a child of this one
     addChild(name: string) {
         let newChild = new Idea(name); 
         this.children.push(newChild);
         return newChild;
     }
+
+    addTag(tag: string) {
+        this.tags[tag] = true;
+    }
+
+    removeTag(tag: string) {
+        this.tags[tag] = false;
+    }
+
+    toggleTag(tag: string) {
+        this.tags[tag] = !this.hasTag(tag);
+    }
+
+    hasTag(tag: string): boolean {
+        return tag in this.tags && this.tags[tag];
+    }
+
+    // Check if this Idea has a set of given tags (all, some, or none are all
+    // checked at once)
+    hasTags(tagsToSearch: Array<string>): HasTagsResult {
+        let result = new HasTagsResult();
+
+        for (let i = 0; i < tagsToSearch.length; ++i) {
+            let tag = tagsToSearch[i];
+
+            if (this.hasTag(tag)) {
+                result.some = true;
+            }
+            else {
+                result.all = false;
+            }
+        }
+
+        result.none = !result.some;
+        return result;
+    }
+}
+
+// A set of results for the Idea.hasTags() function, each according to
+// a different criterion
+export class HasTagsResult
+{
+    // Does this Idea have ALL of the given flags?
+    all: boolean = true;
+    // Does this Idea have SOME of the given flags?
+    some: boolean = false;
+    // Does this Idea have NONE of the given flags?
+    none: boolean = false;
 }
