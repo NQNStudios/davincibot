@@ -1,0 +1,32 @@
+{
+  "name": "davincibot",
+  "version": "0.0.0",
+  "description": "Da Vinci Bot: Do All the Vastly Impractical Nonsense Conceivable In (short) Bouts Of Time",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha --reporter spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NQNStudios/davincibot.git"
+  },
+  "keywords": [
+    "productivity",
+    "playfulness",
+    "focus",
+    "organization"
+  ],
+  "author": "Nat Quayle Nelson <natquaylenelson@gmail.com> (http://natquaylenelson.com)",
+  "license": "SEE LICENSE IN LICENSE",
+  "bugs": {
+    "url": "https://github.com/NQNStudios/davincibot/issues"
+  },
+  "homepage": "https://github.com/NQNStudios/davincibot#readme",
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "mocha": "^5.2.0",
+    "typescript": "^2.9.1"
+  }
+}
