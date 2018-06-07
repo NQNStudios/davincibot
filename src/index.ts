@@ -1,5 +1,6 @@
 import {DaVinciBot, BotStatus, BotProcess} from "./DaVinciBot";
 import {AddIdeaProcess} from "./AddIdeaProcess";
+import {LoadProcess, SaveProcess, LoadFileProcess, SaveFileProcess} from "./Serialization";
 import * as readlineSync from "readline-sync";
 
 // TODO turn this into a test script
@@ -21,13 +22,15 @@ import * as readlineSync from "readline-sync";
 
 let bot: DaVinciBot = new DaVinciBot();
 bot.addProcess('AddIdeaProcess', new AddIdeaProcess());
+bot.addProcess('SaveProcess', new SaveProcess());
+bot.addProcess('LoadProcess', new LoadProcess());
 
 while (true) {
     // TODO print all available processes
     let availableProcesses = bot.processes;
     for (let name in availableProcesses) {
         let process = availableProcesses[name];
-        console.log(`${name} - ${process.description}`);
+        console.log(`${name} - ${process.description()}`);
     }
 
     console.log(`Choose which process to run, or type 'quit'`);

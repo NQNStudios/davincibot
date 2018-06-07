@@ -1,58 +1,45 @@
-import * as moment from "moment";
-import { JsonConvert } from "json2typescript";
-
-interface IdeaJson
-{
-    children: Array<IdeaJson>;
-}
+import { Duration, duration } from "moment";
+import { JsonObject, JsonProperty } from "json2typescript";
 
 // The basic unit of things the user wants to do. Ideas are all created in
 // unstructured form, and structured later by dividing and subdividing them
 // into smaller Ideas.
+@JsonObject
 export class Idea
 {
     // Index definition to allow key-based access to attributes
-    [key:string]: any;
+    [key: string]: any;
 
     // Each Idea will have a unique id numbered upwards from 0.  This doesn't
     // need to be serialized because each deserialization will increment count
     // in the constructor before restoring the Idea's original id
-    static Count: number = 0;
+    static TotalCount: number = 0;
 
+    @JsonProperty("id", Number)
     id: number;
+
+    @JsonProperty("name", String)
     name: string;
+
+    @JsonProperty("description", String)
     description: string = '';
+
+    @JsonProperty("tags")
     tags: { [id: string]: boolean; } = {};
 
+    @JsonProperty("children")
     children: Array<Idea> = [];
 
+    @JsonProperty("_progress", Number)
     private _progress: number = 0;
-    private _duration: moment.Duration = moment.duration(0);
+    @JsonProperty("_duration")
+    private _duration: Duration = duration(0);
 
     // Create an unstructured Idea
     constructor(name: string = '') {
-        this.id = Idea.Count++;
+        this.id = Idea.TotalCount++;
+
         this.name = name;
-    }
-
-    static converter = new JsonConvert();
-
-    static ParseString(json: string): Idea {
-        // Parse the root Idea object naively
-        let jsonObject: IdeaJson = JSON.parse(json) as IdeaJson;
-        return Idea.Parse(jsonObject);
-    }
-
-    // Recursively deserialize an Idea from a JSON object
-    static Parse(json: IdeaJson): Idea {
-        // Generate a TypeScript object from the object
-        let full_object = Idea.converter.deserializeObject(json, Idea);
-        // Apply Parse() to its children recursively
-        let children = json.children;
-        for (let i = 0; i < children.length; ++i) {
-            full_object.children.push(Idea.Parse(children[i]));
-        }
-        return full_object;
     }
 
     // Calculate an attribute that is determined by either the sum or average
@@ -102,12 +89,18 @@ export class Idea
         }
     }
 
-    get duration(): moment.Duration {
-        return this.getOverallAttribute('duration', moment.duration(0), false) as moment.Duration;
+    get duration(): Duration {
+        return this.getOverallAttribute('duration', duration(0), false) as Duration;
     }
 
-    set duration(value: moment.Duration) {
+    set duration(value: Duration) {
         this.setOverallAttribute('duration', value);
+    }
+
+    get remainingDuration(): Duration {
+        let totalSeconds = this.duration.asSeconds();
+        let completeSeconds = this.progress * totalSeconds;
+        return duration(totalSeconds - completeSeconds, 'seconds');
     }
 
     // Create a new Idea as a child of this one
@@ -151,6 +144,11 @@ export class Idea
 
         result.none = !result.some;
         return result;
+    }
+
+    become(otherIdea: Idea) {
+        this.id = otherIdea.id;
+        this.children = otherIdea.children;
     }
 }
 

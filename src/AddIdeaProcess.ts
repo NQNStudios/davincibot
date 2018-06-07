@@ -1,15 +1,15 @@
 import {Idea} from "./Idea";
 import {BotProcess, BotStatus} from "./DaVinciBot";
 
-export class AddIdeaProcess implements BotProcess
+export class AddIdeaProcess extends BotProcess
 {
-    description: string = 'Add ideas to the idea pool.';
+    description(): string { return 'Add ideas to the idea pool.'; }
 
-    start(): BotStatus {
+    start(rootIdea: Idea): BotStatus {
         return BotStatus.HasOutput;
     }
 
-    getOutput(): [string, BotStatus] {
+    getOutput(rootIdea: Idea): [string, BotStatus] {
         return [`Enter as many ideas as you want, followed by ENTER. To stop entering ideas, type 'quit'`, BotStatus.NeedsInput];
     }
 

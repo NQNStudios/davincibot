@@ -32,11 +32,11 @@ export class DaVinciBot
         }
 
         this._currentProcess = process;
-        this._status = this._processes[process].start();
+        this._status = this._processes[process].start(this._rootIdea);
     }
 
     getOutput(): string {
-        let outputTuple = this._processes[this._currentProcess].getOutput();
+        let outputTuple = this._processes[this._currentProcess].getOutput(this._rootIdea);
 
         this._status = outputTuple[1];
         return outputTuple[0];
@@ -59,14 +59,14 @@ export enum BotStatus
     Idle
 }
 
-export interface BotProcess
+export class BotProcess
 {
-    description: string;
+    description(): string { return ''; }
 
-    start(): BotStatus;
+    start(rootIdea: Idea): BotStatus { throw new Error(`Custom BotProcess must define a start method: ${typeof this}`); }
 
-    getOutput(): [string, BotStatus];
-    handleInput(input: string, rootIdea: Idea): BotStatus;
+    getOutput(rootIdea: Idea): [string, BotStatus] { return ['', BotStatus.Idle]; }
+    handleInput(input: string, rootIdea: Idea): BotStatus { return BotStatus.Idle; }
 
-    finish(rootIdea: Idea): void;
+    finish(rootIdea: Idea): void { }
 }
