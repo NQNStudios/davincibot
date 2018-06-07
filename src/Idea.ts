@@ -11,7 +11,7 @@ interface IdeaJson
 // into smaller Ideas.
 export class Idea
 {
-    // Index definition
+    // Index definition to allow key-based access to attributes
     [key:string]: any;
 
     // Each Idea will have a unique id numbered upwards from 0.  This doesn't
