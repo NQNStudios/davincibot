@@ -5,45 +5,49 @@ export class DaVinciBot
 {
     private _rootIdea: Idea = new Idea();
 
-    private _states: { [name: string]: BotState } = {};
-    private _currentState: string = '';
+    private _processes: { [name: string]: BotProcess } = {};
+    private _currentProcess: string = '';
 
     private _status: BotStatus = BotStatus.Idle;
 
-    get currentState(): string {
-        return this._currentState;
+    get currentProcess(): string {
+        return this._currentProcess;
+    }
+
+    get processes(): { [name: string]: BotProcess } {
+        return this._processes;
     }
 
     get status(): BotStatus {
         return this._status;
     }
 
-    addState(name: string, state: BotState) {
-        this._states[name] = state;
+    addProcess(name: string, process: BotProcess) {
+        this._processes[name] = process;
     }
 
-    startState(state: string) {
+    startProcess(process: string) {
         if (this._status !== BotStatus.Idle) {
-            throw new Error(`Tried to switch BotState without first finishing state ${this._currentState}`);
+            throw new Error(`Tried to switch BotProcecss without first finishing process ${this._currentProcess}`);
         }
 
-        this._currentState = state;
-        this._status = this._states[state].start();
+        this._currentProcess = process;
+        this._status = this._processes[process].start();
     }
 
     getOutput(): string {
-        let outputTuple = this._states[this._currentState].getOutput();
+        let outputTuple = this._processes[this._currentProcess].getOutput();
 
         this._status = outputTuple[1];
         return outputTuple[0];
     }
 
     handleInput(input: string) {
-        this._status = this._states[this._currentState].handleInput(input, this._rootIdea);
+        this._status = this._processes[this._currentProcess].handleInput(input, this._rootIdea);
     }
 
-    finishCurrentState() {
-        this._states[this._currentState].finish(this._rootIdea);
+    finishCurrentProcess() {
+        this._processes[this._currentProcess].finish(this._rootIdea);
         this._status = BotStatus.Idle;
     }
 }
@@ -55,8 +59,10 @@ export enum BotStatus
     Idle
 }
 
-export interface BotState
+export interface BotProcess
 {
+    description: string;
+
     start(): BotStatus;
 
     getOutput(): [string, BotStatus];

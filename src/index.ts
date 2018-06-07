@@ -1,5 +1,5 @@
-import {DaVinciBot, BotStatus, BotState} from "./DaVinciBot";
-import {AddIdeaState} from "./AddIdeaState";
+import {DaVinciBot, BotStatus, BotProcess} from "./DaVinciBot";
+import {AddIdeaProcess} from "./AddIdeaProcess";
 import * as readlineSync from "readline-sync";
 
 // TODO turn this into a test script
@@ -20,21 +20,36 @@ import * as readlineSync from "readline-sync";
 /*console.log(deserializedIdea);*/
 
 let bot: DaVinciBot = new DaVinciBot();
+bot.addProcess('AddIdeaProcess', new AddIdeaProcess());
 
-bot.addState('AddIdeaState', new AddIdeaState());
-
-bot.startState('AddIdeaState');
-
-while (bot.status !== BotStatus.Idle) {
-    switch (bot.status) {
-        case BotStatus.HasOutput:
-            console.log(bot.getOutput());
-            break;
-        case BotStatus.NeedsInput:
-            let input = readlineSync.prompt();
-            bot.handleInput(input);
-            break;
+while (true) {
+    // TODO print all available processes
+    let availableProcesses = bot.processes;
+    for (let name in availableProcesses) {
+        let process = availableProcesses[name];
+        console.log(`${name} - ${process.description}`);
     }
-}
 
-bot.finishCurrentState();
+    console.log(`Choose which process to run, or type 'quit'`);
+    let process = readlineSync.prompt();
+
+    if (process === 'quit') {
+        break;
+    }
+
+    bot.startProcess(process);
+
+    while (bot.status !== BotStatus.Idle) {
+        switch (bot.status) {
+            case BotStatus.HasOutput:
+                console.log(bot.getOutput());
+                break;
+            case BotStatus.NeedsInput:
+                let input = readlineSync.prompt();
+                bot.handleInput(input);
+                break;
+        }
+    }
+
+    bot.finishCurrentProcess();
+}

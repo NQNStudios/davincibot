@@ -1,8 +1,10 @@
 import {Idea} from "./Idea";
-import {BotState, BotStatus} from "./DaVinciBot";
+import {BotProcess, BotStatus} from "./DaVinciBot";
 
-export class AddIdeaState implements BotState
+export class AddIdeaProcess implements BotProcess
 {
+    description: string = 'Add ideas to the idea pool.';
+
     start(): BotStatus {
         return BotStatus.HasOutput;
     }
