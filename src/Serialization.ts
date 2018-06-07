@@ -23,12 +23,16 @@ export class LoadProcess extends BotProcess
     }
 
     handleInput(input: string, rootIdea: Idea) {
-        let jsonObject: object = JSON.parse(input);
+        let jsonStart = input.indexOf('{');
+        let countInput = input.substr(0, jsonStart);
+        let jsonInput = input.substr(jsonStart);
+
+        let jsonObject: object = JSON.parse(jsonInput);
         let newRootIdea = LoadProcess.converter.deserializeObject(jsonObject, Idea);
         rootIdea.become(newRootIdea);
 
-        // TODO need to somehow set Idea.TotalCount to the total count--
-        // recursion isn't working
+        // Make sure TotalCount is properly set
+        Idea.TotalCount = parseInt(countInput);
 
         return BotStatus.Idle;
     }
@@ -48,6 +52,6 @@ export class SaveProcess extends BotProcess
     }
 
     getOutput(rootIdea: Idea): [string, BotStatus] {
-        return [JSON.stringify(rootIdea), BotStatus.Idle];
+        return [Idea.TotalCount + JSON.stringify(rootIdea), BotStatus.Idle];
     }
 }
