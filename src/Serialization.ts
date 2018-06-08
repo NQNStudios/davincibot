@@ -6,36 +6,35 @@ import {BotProcess, BotStatus} from "./DaVinciBot";
 
 export class LoadFileProcess extends BotProcess
 {
-    description(): string { return  'Load ideas from a file.'; }
-
-    start(): BotStatus {
-        return BotStatus.NeedsInput;
+    start(): void {
+        this.status = BotStatus.NeedsInput;
     }
 
-    handleInput(input: string): BotStatus {
+    handleInput(input: string): void {
         if (fs.existsSync(input)) {
-            return new LoadProcess().init(this.rootIdea).handleInput(fs.readFileSync(input, 'utf8'));
+            this.bot.startProcess(new LoadProcess(this.bot, this.rootIdea));
+            this.bot.handleInput(fs.readFileSync(input, 'utf8'));
         }
         else {
             // TODO sometimes it might be error behavior if there's no file to
             // load
-            return BotStatus.Idle;
         }
+
+        this.status = BotStatus.Idle;
     }
 }
 
 export class SaveFileProcess extends BotProcess
 {
-    description(): string { return  'Save ideas to a file.'; }
-
-    start(): BotStatus {
-        return BotStatus.NeedsInput;
+    start(): void {
+        this.status = BotStatus.NeedsInput;
     }
 
-    handleInput(input: string) {
-        let output = new SaveProcess().init(this.rootIdea).getOutput()[0];
-        fs.writeFileSync(input, output);
-        return BotStatus.Idle;
+    handleInput(input: string): void {
+        this.bot.startProcess(new SaveProcess(this.bot, this.rootIdea));
+        let output = this.bot.getOutput();
+        fs.writeFileSync(input, output, 'utf8');
+        this.status = BotStatus.Idle;
     }
 }
 
@@ -43,13 +42,11 @@ export class LoadProcess extends BotProcess
 {
     static converter = new JsonConvert();
 
-    description(): string { return 'Load ideas from a JSON string.'; }
-
-    start(): BotStatus {
-        return BotStatus.NeedsInput;
+    start() {
+        this.status = BotStatus.NeedsInput;
     }
 
-    handleInput(input: string) {
+    handleInput(input: string): void {
         let jsonStart = input.indexOf('{');
         let countInput = input.substr(0, jsonStart);
         let jsonInput = input.substr(jsonStart);
@@ -61,7 +58,7 @@ export class LoadProcess extends BotProcess
         // Make sure TotalCount is properly set
         Idea.TotalCount = parseInt(countInput);
 
-        return BotStatus.Idle;
+        this.status = BotStatus.Idle;
     }
 
     finish(): void {
@@ -78,7 +75,8 @@ export class SaveProcess extends BotProcess
         return BotStatus.HasOutput;
     }
 
-    getOutput(): [string, BotStatus] {
-        return [Idea.TotalCount + JSON.stringify(this.rootIdea), BotStatus.Idle];
+    getOutput(): string {
+        this.status = BotStatus.Idle;
+        return Idea.TotalCount + JSON.stringify(this.rootIdea);
     }
 }

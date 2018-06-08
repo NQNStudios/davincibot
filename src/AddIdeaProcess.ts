@@ -3,23 +3,23 @@ import {BotProcess, BotStatus} from "./DaVinciBot";
 
 export class AddIdeaProcess extends BotProcess
 {
-    description(): string { return 'Add ideas to the idea pool.'; }
-
-    start(): BotStatus {
-        return BotStatus.HasOutput;
+    start(): void {
+        this.status = BotStatus.HasOutput;
     }
 
-    getOutput(): [string, BotStatus] {
-        return [`Enter as many ideas as you want, followed by ENTER. To stop entering ideas, type 'quit'`, BotStatus.NeedsInput];
+    getOutput(): string {
+        this.status = BotStatus.NeedsInput;
+        return `Enter as many ideas as you want, followed by ENTER. To stop entering ideas, type 'quit'`;
     }
 
-    handleInput(input: string): BotStatus {
+    handleInput(input: string): void {
         if (input === 'quit') {
-            return BotStatus.Idle;
+            this.status = BotStatus.Idle;
         }
-
-        this.rootIdea.addChild(input);
-        return BotStatus.NeedsInput;
+        else {
+            this.rootIdea.addChild(input);
+            this.status = BotStatus.NeedsInput;
+        }
     }
 
     finish(): void {

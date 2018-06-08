@@ -1,3 +1,4 @@
+import {Idea} from "./Idea";
 import {DaVinciBot, BotStatus, BotProcess} from "./DaVinciBot";
 import {AddIdeaProcess} from "./AddIdeaProcess";
 import {LoadProcess, SaveProcess, LoadFileProcess, SaveFileProcess} from "./Serialization";
@@ -22,48 +23,26 @@ import * as path from "path";
 /*console.log(jsonString);*/
 /*console.log(deserializedIdea);*/
 
+let rootIdea = new Idea();
 let bot: DaVinciBot = new DaVinciBot();
-bot.addProcess('AddIdeaProcess', new AddIdeaProcess());
-bot.addProcess('SaveProcess', new SaveProcess());
-bot.addProcess('LoadProcess', new LoadProcess());
-bot.addProcess('SaveFileProcess', new SaveFileProcess());
-bot.addProcess('LoadFileProcess', new LoadFileProcess());
 
-// Automatically save and load state
-bot.startProcess('LoadFileProcess');
+// Automatically load state
+bot.startProcess(new LoadFileProcess(bot, rootIdea));
 bot.handleInput(path.join(os.homedir(), '.davinci.json'));
 
-while (true) {
-    // TODO print all available processes
-    let availableProcesses = bot.processes;
-    for (let name in availableProcesses) {
-        let process = availableProcesses[name];
-        console.log(`${name} - ${process.description()}`);
+bot.startProcess(new AddIdeaProcess(bot, rootIdea));
+
+while (bot.status !== BotStatus.Idle) {
+    switch (bot.status) {
+        case BotStatus.HasOutput:
+            console.log(bot.getOutput());
+            break;
+        case BotStatus.NeedsInput:
+            let input = readlineSync.prompt();
+            bot.handleInput(input);
+            break;
     }
-
-    console.log(`Choose which process to run, or type 'quit'`);
-    let process = readlineSync.prompt();
-
-    if (process === 'quit') {
-        break;
-    }
-
-    bot.startProcess(process);
-
-    while (bot.status !== BotStatus.Idle) {
-        switch (bot.status) {
-            case BotStatus.HasOutput:
-                console.log(bot.getOutput());
-                break;
-            case BotStatus.NeedsInput:
-                let input = readlineSync.prompt();
-                bot.handleInput(input);
-                break;
-        }
-    }
-
-    bot.finishCurrentProcess();
-    bot.startProcess('SaveFileProcess');
-    bot.handleInput(path.join(os.homedir(), '.davinci.json'));
 }
 
+bot.startProcess(new SaveFileProcess(bot, rootIdea));
+bot.handleInput(path.join(os.homedir(), '.davinci.json'));
