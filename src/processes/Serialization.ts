@@ -52,16 +52,21 @@ export class LoadProcess extends BotProcess
         let jsonInput = input.substr(jsonStart);
 
         let jsonObject: IdeaJson = JSON.parse(jsonInput) as IdeaJson;
+        console.log(jsonObject);
         let newRootIdea = LoadProcess.converter.deserializeObject(jsonObject, Idea);
 
         // Recursively load all the children as Idea objects
         for (let i = 0; i < jsonObject.children.length; ++i) {
             let childLoadProcess = new LoadProcess(this.bot, new Idea());
             this.bot.startProcess(childLoadProcess);
+            console.log(JSON.stringify(jsonObject.children[i]));
             this.bot.handleInput(countInput + JSON.stringify(jsonObject.children[i]));
             newRootIdea.children[i] = childLoadProcess.rootIdea;
         }
 
+        // FIXME if deserialization tests are failing it is probably because of
+        // this line, which is necessary because ES5 doesn't define
+        // Object.assign()
         this.rootIdea.become(newRootIdea);
 
         // Make sure TotalCount is properly set
@@ -69,17 +74,12 @@ export class LoadProcess extends BotProcess
 
         this.status = BotStatus.Idle;
     }
-
-    finish(): void {
-        // TODO: Don't always do this
-        console.log(this.rootIdea.children);
-    }
 }
 
 export class SaveProcess extends BotProcess
 {
-    start(): BotStatus {
-        return BotStatus.HasOutput;
+    start() {
+        this.status = BotStatus.HasOutput;
     }
 
     getOutput(): string {

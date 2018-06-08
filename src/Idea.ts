@@ -28,10 +28,8 @@ export class Idea
 
     @JsonProperty("id", Number)
     id: number;
-
     @JsonProperty("name", String)
     name: string;
-
     @JsonProperty("description", String)
     description: string = '';
 
@@ -157,9 +155,15 @@ export class Idea
         return result;
     }
 
+    // TODO it would be nice not to need this function!
     become(otherIdea: Idea) {
         this.id = otherIdea.id;
+        this.name = otherIdea.name;
+        this.description = otherIdea.description;
+        this.tags = otherIdea.tags;
         this.children = otherIdea.children;
+        this._progress = otherIdea._progress;
+        this._duration = otherIdea._duration;
     }
 }
 
