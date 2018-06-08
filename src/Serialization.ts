@@ -8,13 +8,13 @@ export class LoadFileProcess extends BotProcess
 {
     description(): string { return  'Load ideas from a file.'; }
 
-    start(rootIdea: Idea): BotStatus {
+    start(): BotStatus {
         return BotStatus.NeedsInput;
     }
 
-    handleInput(input: string, rootIdea: Idea): BotStatus {
+    handleInput(input: string): BotStatus {
         if (fs.existsSync(input)) {
-            return new LoadProcess().handleInput(fs.readFileSync(input, 'utf8'), rootIdea);
+            return new LoadProcess().init(this.rootIdea).handleInput(fs.readFileSync(input, 'utf8'));
         }
         else {
             // TODO sometimes it might be error behavior if there's no file to
@@ -28,12 +28,12 @@ export class SaveFileProcess extends BotProcess
 {
     description(): string { return  'Save ideas to a file.'; }
 
-    start(rootIdea: Idea): BotStatus {
+    start(): BotStatus {
         return BotStatus.NeedsInput;
     }
 
-    handleInput(input: string, rootIdea: Idea) {
-        let output = new SaveProcess().getOutput(rootIdea)[0];
+    handleInput(input: string) {
+        let output = new SaveProcess().init(this.rootIdea).getOutput()[0];
         fs.writeFileSync(input, output);
         return BotStatus.Idle;
     }
@@ -45,18 +45,18 @@ export class LoadProcess extends BotProcess
 
     description(): string { return 'Load ideas from a JSON string.'; }
 
-    start(rootIdea: Idea): BotStatus {
+    start(): BotStatus {
         return BotStatus.NeedsInput;
     }
 
-    handleInput(input: string, rootIdea: Idea) {
+    handleInput(input: string) {
         let jsonStart = input.indexOf('{');
         let countInput = input.substr(0, jsonStart);
         let jsonInput = input.substr(jsonStart);
 
         let jsonObject: object = JSON.parse(jsonInput);
         let newRootIdea = LoadProcess.converter.deserializeObject(jsonObject, Idea);
-        rootIdea.become(newRootIdea);
+        this.rootIdea.become(newRootIdea);
 
         // Make sure TotalCount is properly set
         Idea.TotalCount = parseInt(countInput);
@@ -64,9 +64,9 @@ export class LoadProcess extends BotProcess
         return BotStatus.Idle;
     }
 
-    finish(rootIdea: Idea): void {
+    finish(): void {
         // TODO: Don't always do this
-        console.log(rootIdea.children);
+        console.log(this.rootIdea.children);
     }
 }
 
@@ -74,11 +74,11 @@ export class SaveProcess extends BotProcess
 {
     description(): string { return 'Save ideas to a JSON string.'; }
 
-    start(rootIdea: Idea): BotStatus {
+    start(): BotStatus {
         return BotStatus.HasOutput;
     }
 
-    getOutput(rootIdea: Idea): [string, BotStatus] {
-        return [Idea.TotalCount + JSON.stringify(rootIdea), BotStatus.Idle];
+    getOutput(): [string, BotStatus] {
+        return [Idea.TotalCount + JSON.stringify(this.rootIdea), BotStatus.Idle];
     }
 }

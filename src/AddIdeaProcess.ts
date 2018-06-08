@@ -5,25 +5,25 @@ export class AddIdeaProcess extends BotProcess
 {
     description(): string { return 'Add ideas to the idea pool.'; }
 
-    start(rootIdea: Idea): BotStatus {
+    start(): BotStatus {
         return BotStatus.HasOutput;
     }
 
-    getOutput(rootIdea: Idea): [string, BotStatus] {
+    getOutput(): [string, BotStatus] {
         return [`Enter as many ideas as you want, followed by ENTER. To stop entering ideas, type 'quit'`, BotStatus.NeedsInput];
     }
 
-    handleInput(input: string, rootIdea: Idea): BotStatus {
+    handleInput(input: string): BotStatus {
         if (input === 'quit') {
             return BotStatus.Idle;
         }
 
-        rootIdea.addChild(input);
+        this.rootIdea.addChild(input);
         return BotStatus.NeedsInput;
     }
 
-    finish(rootIdea: Idea): void {
+    finish(): void {
         // TODO don't always do this
-        console.log(rootIdea.children);
+        console.log(this.rootIdea.children);
     }
 };

@@ -23,31 +23,31 @@ export class DaVinciBot
     }
 
     addProcess(name: string, process: BotProcess) {
-        this._processes[name] = process;
+        this._processes[name] = process.init(this._rootIdea);
     }
 
     startProcess(process: string) {
         if (this._status !== BotStatus.Idle) {
-            throw new Error(`Tried to switch BotProcecss without first finishing process ${this._currentProcess}`);
+            throw new Error(`Tried to switch BotProcess without first finishing process ${this._currentProcess}`);
         }
 
         this._currentProcess = process;
-        this._status = this._processes[process].start(this._rootIdea);
+        this._status = this._processes[process].start();
     }
 
     getOutput(): string {
-        let outputTuple = this._processes[this._currentProcess].getOutput(this._rootIdea);
+        let outputTuple = this._processes[this._currentProcess].getOutput();
 
         this._status = outputTuple[1];
         return outputTuple[0];
     }
 
     handleInput(input: string) {
-        this._status = this._processes[this._currentProcess].handleInput(input, this._rootIdea);
+        this._status = this._processes[this._currentProcess].handleInput(input);
     }
 
     finishCurrentProcess() {
-        this._processes[this._currentProcess].finish(this._rootIdea);
+        this._processes[this._currentProcess].finish();
         this._status = BotStatus.Idle;
     }
 }
@@ -59,14 +59,21 @@ export enum BotStatus
     Idle
 }
 
+// TODO make this its own file
 export class BotProcess
 {
+    // TODO there could be real problems if a bot is started with null root idea
+    rootIdea: Idea = Idea.None;
     description(): string { return ''; }
 
-    start(rootIdea: Idea): BotStatus { throw new Error(`Custom BotProcess must define a start method: ${typeof this}`); }
+    init(rootIdea: Idea): any {
+        this.rootIdea = rootIdea;
+        return this;
+    }
+    start(): BotStatus { throw new Error(`Custom BotProcess must define a start method: ${typeof this}`); }
 
-    getOutput(rootIdea: Idea): [string, BotStatus] { return ['', BotStatus.Idle]; }
-    handleInput(input: string, rootIdea: Idea): BotStatus { return BotStatus.Idle; }
+    getOutput(): [string, BotStatus] { return ['', BotStatus.Idle]; }
+    handleInput(input: string): BotStatus { return BotStatus.Idle; }
 
-    finish(rootIdea: Idea): void { }
+    finish(): void { }
 }

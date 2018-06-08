@@ -14,6 +14,7 @@ export class Idea
     // need to be serialized because each deserialization will increment count
     // in the constructor before restoring the Idea's original id
     static TotalCount: number = 0;
+    static None: Idea = new Idea();
 
     @JsonProperty("id", Number)
     id: number;
