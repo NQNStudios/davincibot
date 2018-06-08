@@ -15,7 +15,8 @@ export class WorkOnIdeaProcess extends BotProcess
             2. Work on this idea's [parts]
             3. [Delete] this idea
             4. [Plan] this idea.
-            5. [quit]
+            5. [Clear] finished children
+            6. [quit]
         `;
     }
 
@@ -30,7 +31,10 @@ export class WorkOnIdeaProcess extends BotProcess
             case '2':
             case 'parts':
                 for (let i = this.rootIdea.children.length - 1; i >= 0; --i) {
-                    this.bot.startProcess(new WorkOnIdeaProcess(this.bot, this.rootIdea.children[i]));
+                    let child = this.rootIdea.children[i];
+                    if (child.progress != 1) {
+                        this.bot.startProcess(new WorkOnIdeaProcess(this.bot, child));
+                    }
                 }
                 break;
             case '3':
@@ -41,6 +45,10 @@ export class WorkOnIdeaProcess extends BotProcess
             case 'plan':
                 this.bot.startProcess(new PlanIdeaProcess(this.bot, this.rootIdea));
             case '5':
+            case 'clear':
+                // TODO clear out all children with progress of 1
+                break;
+            case '6':
             case 'quit':
                 this.status = BotStatus.Idle;
                 break;

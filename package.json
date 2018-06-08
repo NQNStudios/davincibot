@@ -6,6 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "bot": "npm run build && node dist/index.js",
     "test": "npm run build && mocha --reporter spec",
     "cover": "istanbul cover node_modules/mocha/bin/_mocha test/*.js -- -R spec"
   },
