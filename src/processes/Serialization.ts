@@ -1,8 +1,8 @@
 import * as fs from "fs";
 import {JsonConvert} from "json2typescript";
 
-import {Idea} from "./Idea";
-import {BotProcess, BotStatus} from "./DaVinciBot";
+import {Idea} from "../Idea";
+import {BotProcess, BotStatus} from "../DaVinciBot";
 
 export class LoadFileProcess extends BotProcess
 {

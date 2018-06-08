@@ -1,7 +1,7 @@
 import {Idea} from "./Idea";
 import {DaVinciBot, BotStatus, BotProcess} from "./DaVinciBot";
-import {AddIdeaProcess} from "./AddIdeaProcess";
-import {LoadProcess, SaveProcess, LoadFileProcess, SaveFileProcess} from "./Serialization";
+import {AddIdeaProcess} from "./processes/AddIdeaProcess";
+import {LoadProcess, SaveProcess, LoadFileProcess, SaveFileProcess} from "./processes/Serialization";
 import * as readlineSync from "readline-sync";
 import * as os from "os";
 import * as path from "path";
