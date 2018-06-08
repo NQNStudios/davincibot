@@ -1,15 +1,42 @@
+import * as fs from "fs";
+import {JsonConvert} from "json2typescript";
+
 import {Idea} from "./Idea";
 import {BotProcess, BotStatus} from "./DaVinciBot";
-import {JsonConvert} from "json2typescript";
 
 export class LoadFileProcess extends BotProcess
 {
     description(): string { return  'Load ideas from a file.'; }
+
+    start(rootIdea: Idea): BotStatus {
+        return BotStatus.NeedsInput;
+    }
+
+    handleInput(input: string, rootIdea: Idea): BotStatus {
+        if (fs.existsSync(input)) {
+            return new LoadProcess().handleInput(fs.readFileSync(input, 'utf8'), rootIdea);
+        }
+        else {
+            // TODO sometimes it might be error behavior if there's no file to
+            // load
+            return BotStatus.Idle;
+        }
+    }
 }
 
 export class SaveFileProcess extends BotProcess
 {
     description(): string { return  'Save ideas to a file.'; }
+
+    start(rootIdea: Idea): BotStatus {
+        return BotStatus.NeedsInput;
+    }
+
+    handleInput(input: string, rootIdea: Idea) {
+        let output = new SaveProcess().getOutput(rootIdea)[0];
+        fs.writeFileSync(input, output);
+        return BotStatus.Idle;
+    }
 }
 
 export class LoadProcess extends BotProcess
