@@ -26,4 +26,4 @@ export class AddIdeaProcess extends BotProcess
         // TODO don't always do this
         console.log(this.rootIdea.children);
     }
-};
+}

@@ -1,6 +1,17 @@
 import { Duration, duration } from "moment";
 import { JsonObject, JsonProperty } from "json2typescript";
 
+export interface IdeaJson
+{
+    id: Number;
+    name: String;
+    description: String;
+    tags: { [id: string]: boolean; };
+    children: Array<IdeaJson>;
+    _progress: Number;
+    _duration: Duration;
+}
+
 // The basic unit of things the user wants to do. Ideas are all created in
 // unstructured form, and structured later by dividing and subdividing them
 // into smaller Ideas.

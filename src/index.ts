@@ -1,6 +1,8 @@
 import {Idea} from "./Idea";
 import {DaVinciBot, BotStatus, BotProcess} from "./DaVinciBot";
 import {AddIdeaProcess} from "./processes/AddIdeaProcess";
+import {PlanIdeaProcess} from "./processes/PlanIdeaProcess";
+import {WorkOnIdeaProcess} from "./processes/WorkOnIdeaProcess";
 import {LoadProcess, SaveProcess, LoadFileProcess, SaveFileProcess} from "./processes/Serialization";
 import * as readlineSync from "readline-sync";
 import * as os from "os";
@@ -30,7 +32,7 @@ let bot: DaVinciBot = new DaVinciBot();
 bot.startProcess(new LoadFileProcess(bot, rootIdea));
 bot.handleInput(path.join(os.homedir(), '.davinci.json'));
 
-bot.startProcess(new AddIdeaProcess(bot, rootIdea));
+bot.startProcess(new WorkOnIdeaProcess(bot, rootIdea));
 
 while (bot.status !== BotStatus.Idle) {
     switch (bot.status) {

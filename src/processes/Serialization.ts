@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import {JsonConvert} from "json2typescript";
 
-import {Idea} from "../Idea";
+import {Idea, IdeaJson} from "../Idea";
 import {BotProcess, BotStatus} from "../DaVinciBot";
 
 export class LoadFileProcess extends BotProcess
@@ -51,8 +51,17 @@ export class LoadProcess extends BotProcess
         let countInput = input.substr(0, jsonStart);
         let jsonInput = input.substr(jsonStart);
 
-        let jsonObject: object = JSON.parse(jsonInput);
+        let jsonObject: IdeaJson = JSON.parse(jsonInput) as IdeaJson;
         let newRootIdea = LoadProcess.converter.deserializeObject(jsonObject, Idea);
+
+        // Recursively load all the children as Idea objects
+        for (let i = 0; i < jsonObject.children.length; ++i) {
+            let childLoadProcess = new LoadProcess(this.bot, new Idea());
+            this.bot.startProcess(childLoadProcess);
+            this.bot.handleInput(countInput + JSON.stringify(jsonObject.children[i]));
+            newRootIdea.children[i] = childLoadProcess.rootIdea;
+        }
+
         this.rootIdea.become(newRootIdea);
 
         // Make sure TotalCount is properly set
@@ -69,8 +78,6 @@ export class LoadProcess extends BotProcess
 
 export class SaveProcess extends BotProcess
 {
-    description(): string { return 'Save ideas to a JSON string.'; }
-
     start(): BotStatus {
         return BotStatus.HasOutput;
     }
