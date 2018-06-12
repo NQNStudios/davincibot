@@ -59,7 +59,6 @@ export class LoadProcess extends BotProcess
         for (let i = 0; i < jsonObject.children.length; ++i) {
             let childLoadProcess = new LoadProcess(this.bot, new Idea());
             this.bot.startProcess(childLoadProcess);
-            console.log(JSON.stringify(jsonObject.children[i]));
             this.bot.handleInput(countInput + JSON.stringify(jsonObject.children[i]));
             newRootIdea.children[i] = childLoadProcess.rootIdea;
         }
@@ -84,6 +83,6 @@ export class SaveProcess extends BotProcess
 
     getOutput(): string {
         this.status = BotStatus.Idle;
-        return Idea.TotalCount + JSON.stringify(this.rootIdea);
+        return Idea.TotalCount + '\n' + JSON.stringify(this.rootIdea, null, 4);
     }
 }
