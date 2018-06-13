@@ -1,6 +1,7 @@
 import {Idea} from "../Idea";
 import {BotProcess, BotStatus} from "../BotProcess";
 import {AddIdeaProcess} from "./AddIdeaProcess";
+// TODO wrap this all into WorkOnIdeaProcess
 
 // TODO processes should be able to handleInput in a standard form where
 // different options are either a number or a case-insensitive string.
