@@ -1,5 +1,5 @@
 import {Idea} from "../Idea";
-import {BotProcess, BotStatus} from "../DaVinciBot";
+import {BotProcess, BotStatus} from "../BotProcess";
 
 export class AddIdeaProcess extends BotProcess
 {

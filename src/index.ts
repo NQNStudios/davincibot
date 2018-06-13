@@ -1,5 +1,6 @@
 import {Idea} from "./Idea";
-import {DaVinciBot, BotStatus, BotProcess} from "./DaVinciBot";
+import {DaVinciBot} from "./DaVinciBot";
+import {BotStatus} from "./BotProcess";
 import {AddIdeaProcess} from "./processes/AddIdeaProcess";
 import {PlanIdeaProcess} from "./processes/PlanIdeaProcess";
 import {WorkOnIdeaProcess} from "./processes/WorkOnIdeaProcess";

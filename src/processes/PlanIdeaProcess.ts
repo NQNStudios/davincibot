@@ -1,5 +1,5 @@
 import {Idea} from "../Idea";
-import {BotProcess, BotStatus} from "../DaVinciBot";
+import {BotProcess, BotStatus} from "../BotProcess";
 import {AddIdeaProcess} from "./AddIdeaProcess";
 
 // TODO processes should be able to handleInput in a standard form where

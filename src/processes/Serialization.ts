@@ -2,7 +2,7 @@ import * as fs from "fs";
 import {JsonConvert} from "json2typescript";
 
 import {Idea, IdeaJson} from "../Idea";
-import {BotProcess, BotStatus} from "../DaVinciBot";
+import {BotProcess, BotStatus} from "../BotProcess";
 
 export class LoadFileProcess extends BotProcess
 {

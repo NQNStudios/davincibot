@@ -1,4 +1,4 @@
-import { Idea } from "./Idea";
+import { BotProcess, BotStatus } from "./BotProcess";
 
 // Manages a call stack of BotProcesses
 export class DaVinciBot
@@ -43,29 +43,4 @@ export class DaVinciBot
             this.finishCurrentProcess();
         }
     }
-}
-
-export enum BotStatus
-{
-    HasOutput,
-    NeedsInput,
-    Idle
-}
-
-// TODO make this its own file
-export class BotProcess
-{
-    bot: DaVinciBot;
-    rootIdea: Idea;
-    status: BotStatus = BotStatus.Idle;
-
-    constructor(bot: DaVinciBot, rootIdea: Idea) {
-        this.bot = bot;
-        this.rootIdea = rootIdea;
-    }
-
-    start(): void { }
-    getOutput(): string { return ''; }
-    handleInput(input: string): void { }
-    finish(): void { }
 }
