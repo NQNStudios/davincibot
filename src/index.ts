@@ -45,6 +45,9 @@ while (bot.status !== BotStatus.Idle) {
             bot.handleInput(input);
             break;
     }
+
+    console.log(bot.currentProcess);
+    console.log(bot.status);
 }
 
 bot.startProcess(new SaveFileProcess(bot, rootIdea));
