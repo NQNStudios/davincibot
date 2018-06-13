@@ -11,7 +11,7 @@ export class BotProcess
     constructor(bot: DaVinciBot, rootIdea: Idea) {
         this.bot = bot;
         this.rootIdea = rootIdea;
-        this.commands.push(new BotCommand('[Quit] this process.', [], (process: BotProcess) => { process.status = BotStatus.Idle; process.finish(); } ));
+        this.commands.push(new BotCommand('[Quit] this process.', [ 'q' ], (process: BotProcess) => { process.status = BotStatus.Idle; process.finish(); } ));
     }
 
     start(): void { }
@@ -36,13 +36,28 @@ export class BotProcess
         let numInput = parseInt(input);
         if (isNaN(numInput)) {
             // TODO handle Q
-            // TODO loop through checking against keywords to call it
+            // loop through checking against keywords to call it
+
+            input = input.toLowerCase();
+            for (let i = 0; i < this.commands.length; ++i) {
+                let command = this.commands[i];
+                for (let j = 0; j < command.keywords.length; ++j) {
+                    let keyword = command.keywords[j].toLowerCase();
+                    if (keyword === input) {
+                        command.event(this);
+                    }
+                }
+            }
+
         }
         else {
+            // TODO 0 will call Quit, but it isn't indicated that this is the
+            // case. So maybe that's a bug
             // TODO call the command corresponding with numInput
             this.commands[numInput].event(this);
         }
-        // TODO error checking
+        // TODO error checking -- what if the user inputs a typo, negative
+        // number, etc?
     }
 
     finish(): void { }

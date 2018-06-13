@@ -46,8 +46,9 @@ while (bot.status !== BotStatus.Idle) {
             break;
     }
 
-    console.log(bot.currentProcess);
-    console.log(bot.status);
+    // TODO make these easily enabled/disabled with a verbose arg
+    /*console.log(bot.currentProcess);*/
+    /*console.log(bot.status);*/
 }
 
 bot.startProcess(new SaveFileProcess(bot, rootIdea));
