@@ -1,6 +1,6 @@
 {
   "name": "davincibot",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Da Vinci Bot: Do All the Vastly Impractical Nonsense Conceivable In (short) Bouts Of Time",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
