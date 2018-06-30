@@ -10,6 +10,7 @@
     "test": "npm run build && mocha --reporter spec",
     "cover": "istanbul cover node_modules/mocha/bin/_mocha test/*.js -- -R spec"
   },
+  "bin": "dist/index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NQNStudios/davincibot.git"
