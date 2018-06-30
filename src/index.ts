@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 import {Idea} from "./Idea";
 import {DaVinciBot} from "./DaVinciBot";
 import {BotStatus} from "./BotProcess";
