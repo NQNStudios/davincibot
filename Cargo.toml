@@ -1,0 +1,8 @@
+[package]
+authors = ["Nat Quayle Nelson <natquaylenelson@gmail.com>"]
+name = "davincibot"
+version = "0.0.1"
+[dependencies]
+serde = "1.0.69"
+serde_derive = "1.0.69"
+serde_json = "1.0.22"
