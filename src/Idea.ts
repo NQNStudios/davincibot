@@ -1,48 +1,46 @@
 import * as db from 'quick.db';
 
-type IdeaData = {
-    id: number;
-    name: string = '';
-    description: string = '';
-    tags: Array<string> = [];
-    childIds: Array<number> = [];
-}
-
 // The basic unit of user data in Da Vinci Bot.
 // TODO write clear documentation on the Idea metaphor/design pattern
-export class Idea {
-    readonly data: IdeaData;
+export type IdeaData = {
+    readonly id: number;
+    name: string;
+    description: string;
+    tags: Array<string>;
+    childIds: Array<number>;
+};
 
-    // TODO add properties for direct access to data fields?
+async GetIdea(id: number): IdeaData {
+    let idea = await db.fetch(id.toString());
+    return idea;
+}
 
-    // TODO allow pre-initialization of child Ideas as objects with a recursion
-    // depth specifier
+async CreateIdea(): IdeaData {
+    let ideaCount = await db.fetch('IdeaCount');
+    db.add('IdeaCount', 1);
 
-    private constructor(id: number) {
-        this.id = id;
-    }
+    return { id: ideaCount, name: '', description: '', tags: [], childIds: [] };
+}
 
-    static async Initialize(): void {
-        let ideaCount = await db.fetch('IdeaCount');
-        if (ideaCount === null) {
-            db.set('IdeaCount', 0);
-        }
-    }
+async SetName(id: number, name: string) {
+    return await db.set(id.toString(), name, {target: ".name"});
+}
+
+async SetDescription(id: number, description: string) {
+}
+
+async AddTag(id: number, tag: string) {
+}
+
+async AddChild(id: number, child: IdeaData) {
+}
 
     static async Get(id: number) {
         let idea = await db.fetch(id.toString());
     }
-};
-
-export class Ideas
-{
-    static async NewIdea(): Idea {
-        let ideaCount = await db.fetch('IdeaCount');
-        db.add('IdeaCount', 1);
-
-        let newIdea: Idea = { id: ideaCount }; 
-        return newIdea;
-    }
 }
 
-Ideas.Initialize();
+let ideaCount = await db.fetch('IdeaCount');
+if (ideaCount === null) {
+    db.set('IdeaCount', 0);
+}

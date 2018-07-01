@@ -13,6 +13,7 @@ declare module 'quick.db' {
 // TODO is any the right type for data elements? They will be null if never set
 // before, but can't be set to undefined (I think. Need to reproduce) and also
 // can't be functions (I assume).
+// TODO commit any changes/improvements to DefinitelyTyped
 
 export function createWebview(password: string, port?: number): undefined;
 export function set(ID: string, data: any, options?: OptionsWithTarget): Promise<any>;
