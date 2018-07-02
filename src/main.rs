@@ -5,6 +5,7 @@ extern crate serde;
 extern crate serde_json;
 
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::Path;
 use std::env;
@@ -28,18 +29,33 @@ fn main() {
     println!("Hello, Mx. Da Vinci!");
 
     // The first argument is the path to a Da Vinci Json file
-    // (default='~/.davincibot.json')
+    // (default='.davincibot.json')
     let args: Vec<String> = env::args().collect();
-    let path: String;
-
+    let home_dir = env::home_dir().unwrap();
+    let borrowed_home_dir = home_dir.to_str().unwrap();
+    // TODO make this all nice
+    let path: &str;
+    let default_filename = format!("{}/.davincibot.json", borrowed_home_dir);
+    let mut file; 
+    
     if args.len() > 1 {
-        path = args[1].clone();
+        path = &(args[1]);
+        file = OpenOptions::new().read(true).write(true).create(true).open(&(args[1])).unwrap();
     }
     else {
-        path = String::from("~/.davincibot.json");
+        /*path = &default_filename;*/
+        file = OpenOptions::new().read(true).write(true).create(true).open(&default_filename).unwrap();
     }
 
-    println!("Loading Da Vinci file: {}", path);
+    //println!("Loading Da Vinci file: {}", path);
+
+    // Open the Da Vinci file
+    //let path = Path::new(&path);
+    //let mut file = OpenOptions::new().read(true).write(true).create(true).open(path).unwrap();
+
+    println!("successfully opened file");
+    let mut file_buffer = String::new();
+    file.read_to_string(&mut file_buffer).expect("Hello this didn't work");
 
     // TODO load ideas from file, or create vec containing root idea and write
     // to new file
