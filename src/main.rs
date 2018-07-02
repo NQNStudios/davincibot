@@ -4,17 +4,15 @@ extern crate serde;
 // TODO use EDN instead?
 extern crate serde_json;
 
-extern crate mentat;
-extern crate mentat_cli;
-use mentat::store;
-/*extern crate mentat_query;*/
-use mentat::Queryable;
-use mentat_cli::repl;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+use std::env;
 
 // An Idea is the basic building block of Da Vinci Bot.
 // TODO explain exactly how Ideas work and why
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Idea {
     // TODO is 64 bits enough for Da Vinci ID's?
     id: i64,
@@ -27,18 +25,31 @@ struct Idea {
 }
 
 fn main() {
-    let mut repl = repl::Repl::new(true).unwrap();
-    repl.run(None);
+    println!("Hello, Mx. Da Vinci!");
 
-    /*let store = store::Store::open("test.db").unwrap(); */
+    // The first argument is the path to a Da Vinci Json file
+    // (default='~/.davincibot.json')
+    let args: Vec<String> = env::args().collect();
+    let path: String;
 
-    /*let query_output = store.q_once("[:person/name                  :db.type/string :db.cardinality/one]", None).unwrap();*/
-    /*let query_output = store.q_once("[:find ?e :where [ ?e :person/name \"Ridley Scott\"] ]", None).unwrap();*/
+    if args.len() > 1 {
+        path = args[1].clone();
+    }
+    else {
+        path = String::from("~/.davincibot.json");
+    }
 
+    println!("Loading Da Vinci file: {}", path);
 
+    // TODO load ideas from file, or create vec containing root idea and write
+    // to new file
 
-    /*println!("Hello, Mx. Da Vinci!");*/
-    /*// TODO load the root Idea or create it*/
+    let root_idea = Idea { id: 0, name: "Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(), description: "Here's the root of all your brilliant Ideas.".to_string(), tags: vec!(), child_ids: vec!() };
+    let next_idea = Idea { id: 1, name: "SLIGHTLY DIFFERENT Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(), description: "Here's the root of all your brilliant Ideas.".to_string(), tags: vec!(), child_ids: vec!() };
+    let idea_vec = vec!(root_idea, next_idea);
 
-    /*let root_idea = Idea { id: 0, name: "Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(), description: "Here's the root of all your brilliant Ideas.".to_string(), tags: vec!(), child_ids: vec!() };*/
+    let serialized = serde_json::to_string(&idea_vec).unwrap();
+    println!("serialized={}", serialized);
+    let deserialized: Vec<Idea> = serde_json::from_str(&serialized).unwrap();
+    println!("deserialized={:?}", deserialized);
 }
