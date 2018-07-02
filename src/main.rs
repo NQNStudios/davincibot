@@ -1,11 +1,15 @@
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
-// TODO use END instead?
+// TODO use EDN instead?
 extern crate serde_json;
 
 extern crate mentat;
+extern crate mentat_cli;
 use mentat::store;
+/*extern crate mentat_query;*/
+use mentat::Queryable;
+use mentat_cli::repl;
 
 // An Idea is the basic building block of Da Vinci Bot.
 // TODO explain exactly how Ideas work and why
@@ -23,8 +27,18 @@ struct Idea {
 }
 
 fn main() {
-    println!("Hello, Mx. Da Vinci!");
-    // TODO load the root Idea or create it
+    let mut repl = repl::Repl::new(true).unwrap();
+    repl.run(None);
 
-    let root_idea = Idea { id: 0, name: "Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time", description: "Here's the root of all your brilliant Ideas.", tags: vec!(), child_ids: vec!() };
+    /*let store = store::Store::open("test.db").unwrap(); */
+
+    /*let query_output = store.q_once("[:person/name                  :db.type/string :db.cardinality/one]", None).unwrap();*/
+    /*let query_output = store.q_once("[:find ?e :where [ ?e :person/name \"Ridley Scott\"] ]", None).unwrap();*/
+
+
+
+    /*println!("Hello, Mx. Da Vinci!");*/
+    /*// TODO load the root Idea or create it*/
+
+    /*let root_idea = Idea { id: 0, name: "Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(), description: "Here's the root of all your brilliant Ideas.".to_string(), tags: vec!(), child_ids: vec!() };*/
 }
