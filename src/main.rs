@@ -27,9 +27,9 @@ struct Idea {
 }
 
 fn main() {
-    // Use Clap to parse the command-line arguments defined in davincibot.yml
+    // Use Clap to parse the command-line arguments defined in start.yml
     use clap::App;
-    let args_yaml = load_yaml!("davincibot.yml");
+    let args_yaml = load_yaml!("start.yml");
     let args = App::from_yaml(args_yaml).get_matches();
 
     // The default Da Vinci File is hidden in the home directory.
