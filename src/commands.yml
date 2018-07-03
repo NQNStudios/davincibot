@@ -1,0 +1,10 @@
+settings:
+  - NoBinaryName
+
+subcommands:
+  add:
+    args:
+      - name:
+          help: The name of a new Idea to attach to this one.
+          index: 0
+          required: false

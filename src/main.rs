@@ -70,6 +70,9 @@ fn main() {
 
     // TODO main command loop
 
+    // TODO use subcommand_name() and subcommand_matches() to pipe REPL
+    // commands from commands.yml through handler functions
+
     // When the user is finished, write the idea vector to the Da Vinci file,
     // overwriting old contents
     println!("Writing to Da Vinci File: {}", path);
