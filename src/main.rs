@@ -4,7 +4,9 @@ extern crate serde;
 // TODO use EDN instead?
 extern crate serde_json;
 
-use std::collections::VecDeque;
+#[macro_use]
+extern crate clap;
+
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::SeekFrom;
@@ -25,20 +27,24 @@ struct Idea {
 }
 
 fn main() {
-    println!("Hello, Mx. Da Vinci!");
-    // Get the user's home directory and form the default save file path
+    // Use Clap to parse the command-line arguments defined in davincibot.yml
+    use clap::App;
+    let args_yaml = load_yaml!("davincibot.yml");
+    let args = App::from_yaml(args_yaml).get_matches();
+
+    // The default Da Vinci File is hidden in the home directory.
     let home_dir = env::home_dir().unwrap();
     let home_dir = home_dir.to_str().unwrap();
     let default_path = format!("{}/.davincibot.json", &home_dir);
+    let default_path = default_path.as_str();
 
-    // Ignore the program name arg
-    let mut args: VecDeque<String> = env::args().collect();
-    args.pop_front();
+    // The file where Da Vinci Bot's Ideas are stored can be optionally
+    // specified as the first argument.
+    let path = args.value_of("file").unwrap_or(default_path);
+
+    println!("Hello, Mx. Da Vinci!");
+
  
-    // The first argument is the path to a Da Vinci Json file
-    // (default='~/.davincibot.json')
-    let path = args.pop_front().unwrap_or(default_path);
-
     // Open the save file, or create it if it doesn't exist
     println!("Loading Da Vinci file: {}", path);
     let mut file = OpenOptions::new().read(true).write(true).create(true).open(&path).unwrap();

@@ -1,0 +1,10 @@
+name: davincibot
+version: "0.0.1"
+about: An organizer app for manically eclectic people.
+author: Nat Quayle Nelson <natquaylenelson@gmail.com>
+
+args:
+  - file:
+      help: Specify a Da Vinci file from which to load Ideas.
+      index: 1
+      required: false
