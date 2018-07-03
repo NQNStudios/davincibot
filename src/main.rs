@@ -4,10 +4,11 @@ extern crate serde;
 // TODO use EDN instead?
 extern crate serde_json;
 
+use std::collections::VecDeque;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::PathBuf;
 use std::env;
 
 // An Idea is the basic building block of Da Vinci Bot.
@@ -29,25 +30,24 @@ fn main() {
     println!("Hello, Mx. Da Vinci!");
 
     // The first argument is the path to a Da Vinci Json file
-    // (default='.davincibot.json')
-    let args: Vec<String> = env::args().collect();
-    let home_dir = env::home_dir().unwrap();
-    let borrowed_home_dir = home_dir.to_str().unwrap();
-    // TODO make this all nice
-    let path: &str;
-    let default_filename = format!("{}/.davincibot.json", borrowed_home_dir);
-    let mut file; 
-    
-    if args.len() > 1 {
-        path = &(args[1]);
-        file = OpenOptions::new().read(true).write(true).create(true).open(&(args[1])).unwrap();
-    }
-    else {
-        /*path = &default_filename;*/
-        file = OpenOptions::new().read(true).write(true).create(true).open(&default_filename).unwrap();
-    }
+    // (default='~/.davincibot.json')
+    let mut args: VecDeque<String> = env::args().collect();
+    let home_dir: Option<PathBuf> = env::home_dir();
+    let home_dir: PathBuf = home_dir.unwrap();
+    let home_dir: Option<&str> = home_dir.to_str();
+    let home_dir: &str = home_dir.unwrap();
+    println!("{}", &home_dir);
+    let default_path = format!("{}/.davincibot.json", &home_dir);
 
-    //println!("Loading Da Vinci file: {}", path);
+    // Ignore the program name arg
+    args.pop_front();
+    let path = args.pop_front().unwrap_or(default_path);
+
+    // Open the save file, or create it
+
+    println!("Loading Da Vinci file: {}", path);
+    let mut file = OpenOptions::new().read(true).write(true).create(true).open(&path).unwrap();
+
 
     // Open the Da Vinci file
     //let path = Path::new(&path);
