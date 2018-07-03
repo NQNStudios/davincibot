@@ -5,15 +5,13 @@ extern crate serde;
 extern crate serde_json;
 
 use std::collections::VecDeque;
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::io::SeekFrom;
 use std::env;
 
 // An Idea is the basic building block of Da Vinci Bot.
 // TODO explain exactly how Ideas work and why
-
 #[derive(Serialize, Deserialize, Debug)]
 struct Idea {
     // TODO is 64 bits enough for Da Vinci ID's?
@@ -28,44 +26,48 @@ struct Idea {
 
 fn main() {
     println!("Hello, Mx. Da Vinci!");
-
-    // The first argument is the path to a Da Vinci Json file
-    // (default='~/.davincibot.json')
-    let mut args: VecDeque<String> = env::args().collect();
-    let home_dir: Option<PathBuf> = env::home_dir();
-    let home_dir: PathBuf = home_dir.unwrap();
-    let home_dir: Option<&str> = home_dir.to_str();
-    let home_dir: &str = home_dir.unwrap();
-    println!("{}", &home_dir);
+    // Get the user's home directory and form the default save file path
+    let home_dir = env::home_dir().unwrap();
+    let home_dir = home_dir.to_str().unwrap();
     let default_path = format!("{}/.davincibot.json", &home_dir);
 
     // Ignore the program name arg
+    let mut args: VecDeque<String> = env::args().collect();
     args.pop_front();
+ 
+    // The first argument is the path to a Da Vinci Json file
+    // (default='~/.davincibot.json')
     let path = args.pop_front().unwrap_or(default_path);
 
-    // Open the save file, or create it
-
+    // Open the save file, or create it if it doesn't exist
     println!("Loading Da Vinci file: {}", path);
     let mut file = OpenOptions::new().read(true).write(true).create(true).open(&path).unwrap();
 
-
-    // Open the Da Vinci file
-    //let path = Path::new(&path);
-    //let mut file = OpenOptions::new().read(true).write(true).create(true).open(path).unwrap();
-
-    println!("successfully opened file");
     let mut file_buffer = String::new();
-    file.read_to_string(&mut file_buffer).expect("Hello this didn't work");
+    file.read_to_string(&mut file_buffer).expect("Failed to read from Da Vinci file.");
 
-    // TODO load ideas from file, or create vec containing root idea and write
+    // This is the first Idea a new user will see
+    let default_root_idea: Idea = Idea {
+        id: 0,
+        name: "Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(),
+        description: "Here's the root of all your brilliant Ideas.".to_string(),
+        tags: vec![],
+        child_ids: vec![]
+    };
+
+    // Load ideas from file, or create vec containing root idea and write
     // to new file
+    let ideas = match file_buffer.len() {
+        0 => vec![default_root_idea],
+        _ => serde_json::from_str(&file_buffer).unwrap(),
+    };
 
-    let root_idea = Idea { id: 0, name: "Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(), description: "Here's the root of all your brilliant Ideas.".to_string(), tags: vec!(), child_ids: vec!() };
-    let next_idea = Idea { id: 1, name: "SLIGHTLY DIFFERENT Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(), description: "Here's the root of all your brilliant Ideas.".to_string(), tags: vec!(), child_ids: vec!() };
-    let idea_vec = vec!(root_idea, next_idea);
+    // TODO main command loop
 
-    let serialized = serde_json::to_string(&idea_vec).unwrap();
-    println!("serialized={}", serialized);
-    let deserialized: Vec<Idea> = serde_json::from_str(&serialized).unwrap();
-    println!("deserialized={:?}", deserialized);
+    // When the user is finished, write the idea vector to the Da Vinci file,
+    // overwriting old contents
+    println!("Writing to Da Vinci File: {}", path);
+    file.set_len(0).expect("Failed to overwrite existing Da Vinci file.");
+    file.seek(SeekFrom::Start(0)).expect("Failed to write at beginning of Da Vinci file.");
+    serde_json::to_writer(file, &ideas).expect("Failed to write to Da Vinci file.");
 }
