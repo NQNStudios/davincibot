@@ -1,5 +1,10 @@
 [package]
-authors = ["Nat Quayle Nelson <natquaylenelson@gmail.com>", "Sid Shanker <sshanker220@gmail.com>", "Omayeli Arenyeka <aomayeli@gmail.com>",]
+authors = [
+    "Nat Quayle Nelson <natquaylenelson@gmail.com>",
+    "Sid Shanker <sshanker220@gmail.com>",
+    "Omayeli Arenyeka <aomayeli@gmail.com>",
+    "Kevin Martin <kevinmartinucr@gmail.com>",
+]
 name = "davincibot"
 version = "0.0.1"
 [dependencies]
