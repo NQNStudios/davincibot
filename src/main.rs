@@ -11,7 +11,7 @@ use clap::{App, Arg, SubCommand, AppSettings, ArgSettings, ArgMatches, Values};
 #[macro_use]
 extern crate text_io;
 
-use std::collections::Vec;
+use std::vec::Vec;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io;
@@ -33,34 +33,36 @@ struct Idea {
     // TODO add extra serde-serializable data to Ideas
 }
 
-// TODO this is bad practice -- use a database instead
-static mut ideas: Vec<Idea> = vec![];
-
 impl Idea {
-    pub fn get(id: usize): Idea {
+    // TODO the ideas vector shouldn't be necessary in this when we use a database
+    pub fn get(ideas: &Vec<Idea>, id: usize) -> &mut Idea {
         ideas[id]
     }
 
-    pub fn new(): Idea {
-        Idea {
-            id: ideas.len(),
-            name: "",
-            description: "",
-            tags: vec![],
-            child_ids: vec![],
-        }
+    pub fn new(ideas: &mut Vec<Idea>) -> &mut Idea {
+        ideas.push(
+            Idea {
+                id: ideas.len(),
+                name: "".to_string(),
+                description: "".to_string(),
+                tags: vec![],
+                child_ids: vec![],
+            });
+
+        return &mut ideas[ideas.len()-1];
     }
 
-    pub fn children(&self) {
-        self.child_ids.map(|id| Idea::get(id));
+    pub fn children(&self, ideas: &Vec<Idea>) -> Vec<Idea> {
+        self.child_ids.into_iter().map(|id| Idea::get(ideas, id)).collect()
     }
 
-    // TODO implement this to use a database
+    // TODO with a database, this shouldn't be necessary. Instead we'll just
+    // use get() to lookup by ID
     // This function loads the user's Da Vinci Ideas
-    pub fn load(&str file) {
+    pub fn load(path: &str) -> Vec<Idea> {
         // Open the save file, or create it if it doesn't exist
         println!("Loading Da Vinci file: {}", path);
-        let mut file = OpenOptions::new().read(true).write(true).create(true).open(&file).unwrap();
+        let mut file = OpenOptions::new().read(true).write(true).create(true).open(&path).unwrap();
         let mut file_buffer = String::new();
         file.read_to_string(&mut file_buffer).expect("Failed to read from Da Vinci file.");
 
@@ -84,12 +86,11 @@ impl Idea {
     }
     // TODO implement this with a database
     // This function writes the user's Da Vinci Ideas persistently to a file
-    pub fn write(&str file) {
+    pub fn write(ideas: &Vec<Idea>, path: &str) {
         // When the user is finished, write the idea vector to the Da Vinci file,
         // overwriting old contents
         println!("Writing to Da Vinci File: {}", path);
-        file.set_len(0).expect("Failed to overwrite existing Da Vinci file.");
-        file.seek(SeekFrom::Start(0)).expect("Failed to write at beginning of Da Vinci file.");
+        let mut file = OpenOptions::new().write(true).open(&path).unwrap();
         serde_json::to_writer(file, &ideas).expect("Failed to write to Da Vinci file.");
     }
 
@@ -113,7 +114,7 @@ fn main() {
     // specified as the first argument.
     let path = args.value_of("file").unwrap_or(default_path);
 
-    Idea::load(&path);
+    let mut ideas = Idea::load(&path);
 
     let mut repl = App::new("davincibot repl")
         .setting(AppSettings::NoBinaryName)
@@ -121,6 +122,7 @@ fn main() {
                     .arg(Arg::with_name("idea_name").index(1).multiple(true).require_delimiter(false)))
         .subcommand(SubCommand::with_name("exit"));
 
+    let mut selected_id: usize = 0;
     // In REPL fashion, allow the user to type as many Da Vinci commands as
     // they want until "exit"
     loop {
@@ -131,23 +133,29 @@ fn main() {
         let matches = repl.get_matches_from_safe_borrow(command.split(" ")).unwrap();
 
         match matches.subcommand() {
-            ("add", Some(sub_matches)) => add(sub_matches),
+            ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, &mut selected_id),
             ("exit", Some(_)) => break,
             _ => panic!("not a valid REPL command")
         };
 
         // Ensure the Ideas are saved after every operation (TODO this may be
         // inefficient. A database may help
-        Idea::write(&path);
+        Idea::write(&ideas, &path);
     }
 
 }
 
-fn add(matches: &ArgMatches) {
-    println!("Adding!");
-    println!("{}", matches.is_present("idea_name"));
+fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: &mut usize) {
+    let parent = Idea::get(ideas, 0);
 
-    Idea::get(0);
-    let values: Vec<&str> = matches.values_of("idea_name").unwrap().collect();
-    println!("{:?}", values);
+    if matches.is_present("idea_name") {
+        let values: Vec<&str> = matches.values_of("idea_name").unwrap().collect();
+        let child = Idea::new(ideas);
+        child.name = values.join(" ");
+        parent.child_ids.push(child.id);
+    }
+
+    else {
+        // TODO add until "exit" is found
+    }
 }
