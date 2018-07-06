@@ -6,7 +6,7 @@ extern crate serde_json;
 
 #[macro_use]
 extern crate clap;
-use clap::{App, Arg, SubCommand, AppSettings, ArgSettings, ArgMatches, Values};
+use clap::{App, Arg, SubCommand, AppSettings, ArgMatches};
 
 #[macro_use]
 extern crate text_io;
@@ -15,7 +15,6 @@ use std::vec::Vec;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io;
-use std::io::SeekFrom;
 use std::io::Write;
 use std::env;
 
@@ -35,8 +34,8 @@ struct Idea {
 
 impl Idea {
     // TODO the ideas vector shouldn't be necessary in this when we use a database
-    pub fn get(ideas: &Vec<Idea>, id: usize) -> &mut Idea {
-        ideas[id]
+    pub fn get(ideas: &mut Vec<Idea>, id: usize) -> &mut Idea {
+        &mut ideas[id]
     }
 
     pub fn new(ideas: &mut Vec<Idea>) -> &mut Idea {
@@ -49,10 +48,10 @@ impl Idea {
                 child_ids: vec![],
             });
 
-        return &mut ideas[ideas.len()-1];
+        &mut ideas[ideas.len()-1]
     }
 
-    pub fn children(&self, ideas: &Vec<Idea>) -> Vec<Idea> {
+    pub fn children(&self, ideas: &mut Vec<Idea>) -> Vec<&mut Idea> {
         self.child_ids.into_iter().map(|id| Idea::get(ideas, id)).collect()
     }
 
