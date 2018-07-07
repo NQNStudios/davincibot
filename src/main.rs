@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -17,6 +18,8 @@ use std::io::prelude::*;
 use std::io;
 use std::io::Write;
 use std::env;
+
+static IDEA_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 // An Idea is the basic building block of Da Vinci Bot.
 // TODO explain exactly how Ideas work and why
@@ -39,16 +42,18 @@ impl Idea {
     }
 
     pub fn new(ideas: &mut Vec<Idea>) -> &mut Idea {
-        ideas.push(
-            Idea {
-                id: ideas.len(),
-                name: "".to_string(),
-                description: "".to_string(),
-                tags: vec![],
-                child_ids: vec![],
-            });
+        let mut new_idea = Idea {
+            id: IDEA_COUNT.load(Ordering::SeqCst),
+            name: "".to_string(),
+            description: "".to_string(),
+            tags: vec![],
+            child_ids: vec![],
+        };
 
-        &mut ideas[ideas.len()-1]
+        ideas.push(new_idea);
+        IDEA_COUNT.fetch_add(1, Ordering::SeqCst);
+
+        &mut new_idea
     }
 
     pub fn children(&self, ideas: &mut Vec<Idea>) -> Vec<&mut Idea> {
@@ -78,7 +83,11 @@ impl Idea {
         // to new file
         let ideas = match file_buffer.len() {
             0 => vec![default_root_idea],
-            _ => serde_json::from_str(&file_buffer).unwrap(),
+            _ => {
+                let idea_list: Vec<Idea> = serde_json::from_str(&file_buffer).unwrap();
+                IDEA_COUNT.store(idea_list.len(), Ordering::SeqCst);
+                idea_list
+            },
         };
 
         ideas
