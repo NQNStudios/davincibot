@@ -137,6 +137,12 @@ fn main() {
         .subcommand(SubCommand::with_name("list"))
         .subcommand(SubCommand::with_name("select")
                     .arg(Arg::with_name("index").index(1)))
+        // TODO need a print command to print name, description (markdown
+        // formatted)
+        // TODO need a traverse command which traverses children of node
+        // TODO need an add-tag, remove-tag command
+        // TODO need a search by tag command
+        // (all of these will inevitably be rewritten post-Mentat)
         .subcommand(SubCommand::with_name("exit"));
 
     let mut selected_id: usize = 0;
