@@ -41,6 +41,15 @@ impl Idea {
         &mut ideas[id]
     }
 
+    pub fn get_child_names(ideas: &mut Vec<Idea>, id: usize) -> Vec<String> {
+        let child_ids = {
+            let parent_idea = Idea::get(ideas, id);
+            parent_idea.child_ids.clone()
+        };
+
+        child_ids.into_iter().map(|id| Idea::get(ideas, id).name.clone()).collect()
+    }
+
     pub fn new(ideas: &mut Vec<Idea>) -> &mut Idea {
         let new_idea = Idea {
             id: IDEA_COUNT.load(Ordering::SeqCst),
@@ -125,6 +134,9 @@ fn main() {
         .setting(AppSettings::NoBinaryName)
         .subcommand(SubCommand::with_name("add")
                     .arg(Arg::with_name("idea_name").index(1).multiple(true).require_delimiter(false)))
+        .subcommand(SubCommand::with_name("list"))
+        .subcommand(SubCommand::with_name("select")
+                    .arg(Arg::with_name("index").index(1)))
         .subcommand(SubCommand::with_name("exit"));
 
     let mut selected_id: usize = 0;
@@ -139,6 +151,8 @@ fn main() {
 
         match matches.subcommand() {
             ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),
+            ("list", _) => list(&mut ideas, selected_id),
+            ("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),
             ("exit", Some(_)) => break,
             _ => panic!("not a valid REPL command")
         };
@@ -183,3 +197,30 @@ fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize) {
         parent.child_ids.push(id);
     }
 }
+
+// TODO it seems to me ideas shouldn't require mut here -- am I wrong?
+fn list(ideas: &mut Vec<Idea>, selected_id: usize) {
+    let child_names = Idea::get_child_names(ideas, selected_id);
+    let mut idx = 1;
+    for name in child_names {
+        println!("{}. {}", idx, name);
+        idx += 1;
+    }
+}
+
+// TODO rather than call static Idea::get(), define an Ideas type that is
+// Vec<Idea>.
+
+// TODO need a way to select parent && this will require storing parent_id in
+// Ideas. Better to do that before constructing any large Da Vinci trees
+fn select(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: &mut usize) {
+    let index = usize::from_str_radix(matches.value_of("index").unwrap(), 10).unwrap();
+
+    let idea = Idea::get(ideas, *selected_id);
+
+    let new_selected_id = idea.child_ids[index - 1];
+    *selected_id = new_selected_id;
+}
+
+// TODO wishlist
+// scan command allows user to scan an ISBN barcode to add a Book Idea
