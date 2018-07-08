@@ -42,7 +42,7 @@ impl Idea {
     }
 
     pub fn new(ideas: &mut Vec<Idea>) -> &mut Idea {
-        let mut new_idea = Idea {
+        let new_idea = Idea {
             id: IDEA_COUNT.load(Ordering::SeqCst),
             name: "".to_string(),
             description: "".to_string(),
@@ -50,14 +50,11 @@ impl Idea {
             child_ids: vec![],
         };
 
+        let index = new_idea.id;
         ideas.push(new_idea);
         IDEA_COUNT.fetch_add(1, Ordering::SeqCst);
 
-        &mut new_idea
-    }
-
-    pub fn children(&self, ideas: &mut Vec<Idea>) -> Vec<&mut Idea> {
-        self.child_ids.into_iter().map(|id| Idea::get(ideas, id)).collect()
+        &mut ideas[index]
     }
 
     // TODO with a database, this shouldn't be necessary. Instead we'll just
@@ -141,7 +138,7 @@ fn main() {
         let matches = repl.get_matches_from_safe_borrow(command.split(" ")).unwrap();
 
         match matches.subcommand() {
-            ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, &mut selected_id),
+            ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),
             ("exit", Some(_)) => break,
             _ => panic!("not a valid REPL command")
         };
@@ -153,17 +150,36 @@ fn main() {
 
 }
 
-fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: &mut usize) {
-    let parent = Idea::get(ideas, 0);
+fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize) {
+    let mut child_names: Vec<String> = vec![];
+    let mut child_ids: Vec<usize> = vec![];
 
     if matches.is_present("idea_name") {
         let values: Vec<&str> = matches.values_of("idea_name").unwrap().collect();
-        let child = Idea::new(ideas);
-        child.name = values.join(" ");
-        parent.child_ids.push(child.id);
+        child_names.push(values.join(" "));
+    }
+    else {
+        // add to child_names until "exit" is encountered
+        loop {
+            let idea_name: String = read!("{}\n");
+            if idea_name == "exit" {
+                break;
+            }
+            child_names.push(idea_name);
+        }
     }
 
-    else {
-        // TODO add until "exit" is found
+    // TODO loop through child names creating ideas and storing their ids in
+    // a vector
+    for name in child_names {
+        let child = Idea::new(ideas);
+        child.name = name;
+        child_ids.push(child.id);
+    }
+
+        // TODO add ALL the child IDs to the parent Idea
+    let parent = Idea::get(ideas, selected_id);
+    for id in child_ids {
+        parent.child_ids.push(id);
     }
 }
