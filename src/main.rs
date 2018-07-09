@@ -30,6 +30,8 @@ struct Idea {
     name: String,
     description: String,
     tags: Vec<String>,
+
+    parent_id: Option<usize>,
     child_ids: Vec<usize>,
     // TODO add attachments to Ideas
     // TODO add extra serde-serializable data to Ideas
@@ -50,16 +52,19 @@ impl Idea {
         child_ids.into_iter().map(|id| Idea::get(ideas, id).name.clone()).collect()
     }
 
-    pub fn new(ideas: &mut Vec<Idea>) -> &mut Idea {
+    pub fn new(ideas: &mut Vec<Idea>, parent_id: usize) -> &mut Idea {
         let new_idea = Idea {
             id: IDEA_COUNT.load(Ordering::SeqCst),
             name: "".to_string(),
             description: "".to_string(),
             tags: vec![],
+            parent_id: Some(parent_id),
             child_ids: vec![],
         };
 
         let index = new_idea.id;
+        // Make sure the parent references the child
+        ideas[parent_id].child_ids.push(index);
         ideas.push(new_idea);
         IDEA_COUNT.fetch_add(1, Ordering::SeqCst);
 
@@ -82,8 +87,10 @@ impl Idea {
             name: "Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time".to_string(),
             description: "Here's the root of all your brilliant Ideas.".to_string(),
             tags: vec![],
+            parent_id: None,
             child_ids: vec![]
         };
+        IDEA_COUNT.fetch_add(1, Ordering::SeqCst);
 
         // Load ideas from file, or create vec containing root idea and write
         // to new file
@@ -172,7 +179,6 @@ fn main() {
 
 fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize) {
     let mut child_names: Vec<String> = vec![];
-    let mut child_ids: Vec<usize> = vec![];
 
     if matches.is_present("idea_name") {
         let values: Vec<&str> = matches.values_of("idea_name").unwrap().collect();
@@ -192,15 +198,8 @@ fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize) {
     // TODO loop through child names creating ideas and storing their ids in
     // a vector
     for name in child_names {
-        let child = Idea::new(ideas);
+        let child = Idea::new(ideas, selected_id);
         child.name = name;
-        child_ids.push(child.id);
-    }
-
-        // TODO add ALL the child IDs to the parent Idea
-    let parent = Idea::get(ideas, selected_id);
-    for id in child_ids {
-        parent.child_ids.push(id);
     }
 }
 
