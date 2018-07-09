@@ -145,10 +145,23 @@ fn main() {
         .subcommand(SubCommand::with_name("select")
                     .arg(Arg::with_name("index").index(1)))
         .subcommand(SubCommand::with_name("up"))
-        // TODO need a print command to print name, description (markdown
+        // TODO need a print command to print name, description, tags (markdown
         // formatted)
+
+        // TODO format like this?
+        // Title
+        // [tag1] [tag2] [tag3] ...
+        // -----
+        // Description
+
+
         // TODO need a traverse command which traverses children of node
-        // TODO need an add-tag, remove-tag command
+        .subcommand(SubCommand::with_name("tag")
+                    .arg(Arg::with_name("tags").index(1).multiple(true).require_delimiter(false)))
+        .subcommand(SubCommand::with_name("untag")
+                    .arg(Arg::with_name("tags").index(1).multiple(true).require_delimiter(false)))
+        // TODO need a clear all tags command
+        // TODO need an add description, edit description command
         // TODO need a search by tag command
         // (all of these will inevitably be rewritten post-Mentat)
         .subcommand(SubCommand::with_name("exit"));
@@ -168,6 +181,8 @@ fn main() {
             ("list", _) => list(&mut ideas, selected_id),
             ("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),
             ("up", _) => up(&mut ideas, &mut selected_id),
+            ("tag", Some(sub_matches)) => set_tags(sub_matches, &mut ideas, selected_id, true),
+            ("untag", Some(sub_matches)) => set_tags(sub_matches, &mut ideas, selected_id, false),
             ("exit", Some(_)) => break,
             _ => panic!("not a valid REPL command")
         };
@@ -231,6 +246,34 @@ fn up(ideas: &mut Vec<Idea>, selected_id: &mut usize) {
     let idea = Idea::get(ideas, *selected_id);
     if let Some(parent_id) = idea.parent_id {
         *selected_id = parent_id;
+    }
+}
+
+fn set_tags(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize, tagged: bool) {
+    let mut tags: Vec<String> = vec![];
+
+    if matches.is_present("tags") {
+        let values: Vec<&str> = matches.values_of("tags").unwrap().collect();
+        for value in values {
+            tags.push(value.to_string());
+        }
+    }
+
+    let idea = Idea::get(ideas, selected_id);
+    let current_tags = &mut (idea.tags);
+    for tag in tags {
+        if let Some(position) = current_tags.iter().position(|t| *t==tag) {
+            // The tag is present, but should be removed
+            if !tagged {
+                current_tags.remove(position);
+            }
+        }
+        else {
+            // The tag is not present, but should be added
+            if tagged {
+                current_tags.push(tag);
+            }
+        }
     }
 }
 
