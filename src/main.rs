@@ -110,8 +110,9 @@ impl Idea {
     pub fn write(ideas: &Vec<Idea>, path: &str) {
         // When the user is finished, write the idea vector to the Da Vinci file,
         // overwriting old contents
-        println!("Writing to Da Vinci File: {}", path);
+        /*println!("Writing to Da Vinci File: {}", path);*/
         let mut file = OpenOptions::new().write(true).open(&path).unwrap();
+        file.set_len(0);
         serde_json::to_writer(file, &ideas).expect("Failed to write to Da Vinci file.");
     }
 
@@ -204,6 +205,11 @@ fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize) {
     else {
         // add to child_names until "exit" is encountered
         loop {
+            // TODO getting a series of input lines terminated by "exit" like
+            // this, should be a function with a closure for the inner logic
+            print!("-> ");
+            io::stdout().flush().unwrap();
+
             let idea_name: String = read!("{}\n");
             if idea_name == "exit" {
                 break;
@@ -279,3 +285,14 @@ fn set_tags(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize, tag
 
 // TODO wishlist
 // scan command allows user to scan an ISBN barcode to add a Book Idea
+
+// command that imports a Trello card or list
+// List Idea
+// | 
+// |--Card Ideas (archived cards get 'Done' or 'Archived' tag)
+//       |   
+//       |--Checklist Ideas (preserve checked status as Done tag, even??)
+
+// Interrupt ^C signal and treat it as "exit" instead of closing program
+
+// NOTE sometimes it feels like "exit" should be the same as "up"
