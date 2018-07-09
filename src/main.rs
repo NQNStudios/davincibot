@@ -285,6 +285,8 @@ fn set_tags(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize, tag
 
 // TODO wishlist
 // scan command allows user to scan an ISBN barcode to add a Book Idea
+// command to import Github issues
+//      -- how will this stay synced and avoid duplicates?
 
 // command that imports a Trello card or list
 // List Idea
@@ -296,3 +298,5 @@ fn set_tags(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize, tag
 // Interrupt ^C signal and treat it as "exit" instead of closing program
 
 // NOTE sometimes it feels like "exit" should be the same as "up"
+
+// KnowYaPlanet integration
