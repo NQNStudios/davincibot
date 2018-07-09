@@ -144,6 +144,7 @@ fn main() {
         .subcommand(SubCommand::with_name("list"))
         .subcommand(SubCommand::with_name("select")
                     .arg(Arg::with_name("index").index(1)))
+        .subcommand(SubCommand::with_name("up"))
         // TODO need a print command to print name, description (markdown
         // formatted)
         // TODO need a traverse command which traverses children of node
@@ -166,6 +167,7 @@ fn main() {
             ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),
             ("list", _) => list(&mut ideas, selected_id),
             ("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),
+            ("up", _) => up(&mut ideas, &mut selected_id),
             ("exit", Some(_)) => break,
             _ => panic!("not a valid REPL command")
         };
@@ -216,8 +218,6 @@ fn list(ideas: &mut Vec<Idea>, selected_id: usize) {
 // TODO rather than call static Idea::get(), define an Ideas type that is
 // Vec<Idea>.
 
-// TODO need a way to select parent && this will require storing parent_id in
-// Ideas. Better to do that before constructing any large Da Vinci trees
 fn select(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: &mut usize) {
     let index = usize::from_str_radix(matches.value_of("index").unwrap(), 10).unwrap();
 
@@ -225,6 +225,13 @@ fn select(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: &mut usize) 
 
     let new_selected_id = idea.child_ids[index - 1];
     *selected_id = new_selected_id;
+}
+
+fn up(ideas: &mut Vec<Idea>, selected_id: &mut usize) {
+    let idea = Idea::get(ideas, *selected_id);
+    if let Some(parent_id) = idea.parent_id {
+        *selected_id = parent_id;
+    }
 }
 
 // TODO wishlist
