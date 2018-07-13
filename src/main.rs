@@ -2,7 +2,6 @@ use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
-// TODO use EDN instead?
 extern crate serde_json;
 
 #[macro_use]
@@ -25,7 +24,6 @@ static IDEA_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 // TODO explain exactly how Ideas work and why
 #[derive(Serialize, Deserialize, Debug)]
 struct Idea {
-    // TODO is 64 bits enough for Da Vinci ID's?
     id: usize,
     name: String,
     description: String,
@@ -38,7 +36,20 @@ struct Idea {
 }
 
 impl Idea {
-    // TODO the ideas vector shouldn't be necessary in this when we use a database
+    pub fn print(ideas: &mut Vec<Idea>, id: usize) {
+        let idea = &ideas[id];
+        // TODO format this printout in a visually appealing way
+        println!("#{}: {}", id, idea.name);
+        for tag in &idea.tags {
+            print!("[{}] ", tag);
+        }
+        println!();
+        println!("---");
+        println!("{}", idea.description);
+        println!("{} children", idea.child_ids.len());
+    }
+
+    // TODO the ideas vector shouldn't be a necessary parameter when we use a database
     pub fn get(ideas: &mut Vec<Idea>, id: usize) -> &mut Idea {
         &mut ideas[id]
     }
@@ -154,17 +165,10 @@ fn main() {
         .subcommand(SubCommand::with_name("add")
                     .arg(Arg::with_name("idea_name").index(1).multiple(true).require_delimiter(false)))
         .subcommand(SubCommand::with_name("list"))
+        .subcommand(SubCommand::with_name("print"))
         .subcommand(SubCommand::with_name("select")
                     .arg(Arg::with_name("index").index(1)))
         .subcommand(SubCommand::with_name("up"))
-        // TODO need a print command to print name, description, tags (markdown
-        // formatted)
-
-        // TODO format like this?
-        // Title
-        // [tag1] [tag2] [tag3] ...
-        // -----
-        // Description
 
 
         // TODO need a traverse command which traverses children of node
@@ -191,6 +195,7 @@ fn main() {
         match matches.subcommand() {
             ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),
             ("list", _) => list(&mut ideas, selected_id),
+            ("print", _) => Idea::print(&mut ideas, selected_id),
             ("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),
             ("up", _) => up(&mut ideas, &mut selected_id),
             ("tag", Some(sub_matches)) => set_tags(sub_matches, &mut ideas, selected_id, true),
@@ -297,20 +302,4 @@ fn set_tags(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize, tag
     }
 }
 
-// TODO wishlist
-// scan command allows user to scan an ISBN barcode to add a Book Idea
-// command to import Github issues
-//      -- how will this stay synced and avoid duplicates?
-
-// command that imports a Trello card or list
-// List Idea
-// | 
-// |--Card Ideas (archived cards get 'Done' or 'Archived' tag)
-//       |   
-//       |--Checklist Ideas (preserve checked status as Done tag, even??)
-
-// Interrupt ^C signal and treat it as "exit" instead of closing program
-
-// NOTE sometimes it feels like "exit" should be the same as "up"
-
-// KnowYaPlanet integration
+// TODO Interrupt ^C signal and treat it as "exit" instead of closing program
