@@ -71,6 +71,15 @@ impl Idea {
         &mut ideas[index]
     }
 
+    /*pub fn set_parent(ideas: &mut Vec<Idea>, id_to_set: usize, new_parent_id: usize) {*/
+        /*if let Some(old_parent_id) = {*/
+            /*let idea = &ideas[id_to_move];*/
+            /*idea.parent_id*/
+        /*} {} else {*/
+            /*panic!("Tried to move root Idea to a new parent!");*/
+        /*}*/
+    /*}*/
+
     // TODO with a database, this shouldn't be necessary. Instead we'll just
     // use get() to lookup by ID
     // This function loads the user's Da Vinci Ideas
