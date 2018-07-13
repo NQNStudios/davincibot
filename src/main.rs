@@ -147,6 +147,8 @@ fn main() {
 
     let mut ideas = Idea::load(&path);
 
+    // TODO this is starting to get really ugly, perhaps with little benefit.
+    // Maybe remove the clap.rs dependency.
     let mut repl = App::new("davincibot repl")
         .setting(AppSettings::NoBinaryName)
         .subcommand(SubCommand::with_name("add")
@@ -236,6 +238,9 @@ fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize) {
 }
 
 // TODO it seems to me ideas shouldn't require mut here -- am I wrong?
+// Answer: The mut is required because get() returns a mutable reference for
+// convenient edits. Once all Idea modification happens through an API, this
+// will be better.
 fn list(ideas: &mut Vec<Idea>, selected_id: usize) {
     let child_names = Idea::get_child_names(ideas, selected_id);
     let mut idx = 1;
