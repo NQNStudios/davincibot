@@ -5,6 +5,9 @@ authors = [
     "Omayeli Arenyeka <aomayeli@gmail.com>",
     "Kevin Martin <kevinmartinucr@gmail.com>",
 ]
+exclude = [
+    "deprecated/*"
+]
 name = "davincibot"
 version = "0.0.1"
 [dependencies]
