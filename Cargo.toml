@@ -9,6 +9,8 @@ exclude = [
     "deprecated/*"
 ]
 name = "davincibot"
+description="A command-line utility for managing absurdly eclectic interests."
+license="GPL-3.0"
 version = "0.0.1"
 [dependencies]
 serde = "1.0.69"
