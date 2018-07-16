@@ -11,6 +11,9 @@ use clap::{App, Arg, SubCommand, AppSettings, ArgMatches};
 #[macro_use]
 extern crate text_io;
 
+extern crate subprocess;
+use subprocess::{Exec, Redirection};
+
 use std::vec::Vec;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -164,6 +167,7 @@ fn main() {
         .setting(AppSettings::NoBinaryName)
         .subcommand(SubCommand::with_name("add")
                     .arg(Arg::with_name("idea_name").index(1).multiple(true).require_delimiter(false)))
+        .subcommand(SubCommand::with_name("describe"))
         .subcommand(SubCommand::with_name("list"))
         .subcommand(SubCommand::with_name("print"))
         .subcommand(SubCommand::with_name("select")
@@ -177,7 +181,6 @@ fn main() {
         .subcommand(SubCommand::with_name("untag")
                     .arg(Arg::with_name("tags").index(1).multiple(true).require_delimiter(false)))
         // TODO need a clear all tags command
-        // TODO need an add description, edit description command
         // TODO need a search by tag command
         // (all of these will inevitably be rewritten post-Mentat)
         .subcommand(SubCommand::with_name("exit"));
@@ -194,6 +197,7 @@ fn main() {
 
         match matches.subcommand() {
             ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),
+            ("describe", _) => describe(&mut ideas, selected_id),
             ("list", _) => list(&mut ideas, selected_id),
             ("print", _) => Idea::print(&mut ideas, selected_id),
             ("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),
@@ -302,4 +306,30 @@ fn set_tags(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize, tag
     }
 }
 
+fn describe(ideas: &mut Vec<Idea>, selected_id: usize) {
+    let mut idea = Idea::get(ideas, selected_id);
+
+    let existing_description = idea.description.clone();
+    println!("{}", existing_description);
+
+    /*println!("{}", command);*/
+    let mut file = OpenOptions::new().write(true).create(true).open(".IDEA_DESCRIPTION").unwrap();
+    file.set_len(0);
+    let exit_status = Exec::cmd("echo").arg(&existing_description).stdout(Redirection::File(file)).join();
+    /*println!("{:?}", exit_status);*/
+
+    // TODO allow default text editors other than vim, and launch in
+    // a platform-agnostic manner
+    let exit_status = Exec::cmd("vim").arg(".IDEA_DESCRIPTION").join();
+    /*println!("{:?}", exit_status);*/
+    let mut file = OpenOptions::new().read(true).open(".IDEA_DESCRIPTION").unwrap();
+    let mut file_buffer = String::new();
+    file.read_to_string(&mut file_buffer).expect("Failed to read from Da Vinci file.");
+    file_buffer = file_buffer.trim().to_string();
+
+    if (existing_description != file_buffer) {
+        println!("Updating Idea description.");
+        idea.description = file_buffer;
+    }
+}
 // TODO Interrupt ^C signal and treat it as "exit" instead of closing program
