@@ -66,6 +66,22 @@ impl Idea {
         child_ids.into_iter().map(|id| Idea::get(ideas, id).name.clone()).collect()
     }
 
+    pub fn get_child_id_by_name(ideas: &mut Vec<Idea>, id: usize, name: &str) -> Option<usize> {
+        let child_names = Idea::get_child_names(ideas, id);
+        let child_ids = {
+            let idea = Idea::get(ideas, id);
+            idea.child_ids.clone()
+        };
+
+        for i in 0..child_names.len() {
+            if child_names[i] == name {
+                return Some(child_ids[i]);
+            }
+        }
+
+        None
+    }
+
     pub fn new(ideas: &mut Vec<Idea>, parent_id: usize) -> &mut Idea {
         let new_idea = Idea {
             id: IDEA_COUNT.load(Ordering::SeqCst),
@@ -263,12 +279,26 @@ fn list(ideas: &mut Vec<Idea>, selected_id: usize) {
 // Vec<Idea>.
 
 fn select(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: &mut usize) {
-    let index = usize::from_str_radix(matches.value_of("index").unwrap(), 10).unwrap();
+    let index = usize::from_str_radix(matches.value_of("index").unwrap(), 10);
+    // TODO if # precedes an id, it could be an absolute id we wish to select
+    // by
+    match index {
+        Ok(index) => {
+            // It could be a child index we wish to select by
+            let idea = Idea::get(ideas, *selected_id);
 
-    let idea = Idea::get(ideas, *selected_id);
+            let new_selected_id = idea.child_ids[index - 1];
+            *selected_id = new_selected_id;
+        },
+        Err(_) => {
+            // It could be a child name we wish to select by
+            let child_name = matches.value_of("index").unwrap();
 
-    let new_selected_id = idea.child_ids[index - 1];
-    *selected_id = new_selected_id;
+            let new_selected_id = Idea::get_child_id_by_name(ideas, *selected_id, child_name).unwrap();
+            *selected_id = new_selected_id;
+        }
+    }
+
 }
 
 fn up(ideas: &mut Vec<Idea>, selected_id: &mut usize) {
