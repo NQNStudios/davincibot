@@ -150,8 +150,8 @@ impl Idea {
         // When the user is finished, write the idea vector to the Da Vinci file,
         // overwriting old contents
         /*println!("Writing to Da Vinci File: {}", path);*/
-        let mut file = OpenOptions::new().write(true).open(&path).unwrap();
-        file.set_len(0);
+        let file = OpenOptions::new().write(true).open(&path).unwrap();
+        file.set_len(0).expect("Failed to overwrite Da Vinci file");
         serde_json::to_writer(file, &ideas).expect("Failed to write to Da Vinci file.");
     }
 
@@ -337,27 +337,27 @@ fn set_tags(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize, tag
 }
 
 fn describe(ideas: &mut Vec<Idea>, selected_id: usize) {
-    let mut idea = Idea::get(ideas, selected_id);
+    let idea = Idea::get(ideas, selected_id);
 
     let existing_description = idea.description.clone();
     println!("{}", existing_description);
 
     /*println!("{}", command);*/
-    let mut file = OpenOptions::new().write(true).create(true).open(".IDEA_DESCRIPTION").unwrap();
-    file.set_len(0);
-    let exit_status = Exec::cmd("echo").arg(&existing_description).stdout(Redirection::File(file)).join();
+    let file = OpenOptions::new().write(true).create(true).open(".IDEA_DESCRIPTION").unwrap();
+    file.set_len(0).expect("Failed to overrwrite temp description file!");
+    let _exit_status = Exec::cmd("echo").arg(&existing_description).stdout(Redirection::File(file)).join();
     /*println!("{:?}", exit_status);*/
 
     // TODO allow default text editors other than vim, and launch in
     // a platform-agnostic manner
-    let exit_status = Exec::cmd("vim").arg(".IDEA_DESCRIPTION").join();
+    let _exit_status = Exec::cmd("vim").arg(".IDEA_DESCRIPTION").join();
     /*println!("{:?}", exit_status);*/
     let mut file = OpenOptions::new().read(true).open(".IDEA_DESCRIPTION").unwrap();
     let mut file_buffer = String::new();
     file.read_to_string(&mut file_buffer).expect("Failed to read from Da Vinci file.");
     file_buffer = file_buffer.trim().to_string();
 
-    if (existing_description != file_buffer) {
+    if existing_description != file_buffer {
         println!("Updating Idea description.");
         idea.description = file_buffer;
     }
