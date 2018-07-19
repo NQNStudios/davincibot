@@ -39,6 +39,7 @@ struct Idea {
 }
 
 impl Idea {
+    // TODO print() is probably a bad function name
     pub fn print(ideas: &mut Vec<Idea>, id: usize) {
         let idea = &ideas[id];
         // TODO format this printout in a visually appealing way
@@ -50,6 +51,7 @@ impl Idea {
         println!("---");
         println!("{}", idea.description);
         println!("{} children", idea.child_ids.len());
+        // TODO print how many children are hidden
     }
 
     // TODO the ideas vector shouldn't be a necessary parameter when we use a database
@@ -57,29 +59,77 @@ impl Idea {
         &mut ideas[id]
     }
 
+    pub fn get_child_ids(ideas: &mut Vec<Idea>, id: usize) -> Vec<usize> {
+        let parent_idea = Idea::get(ideas, id);
+        parent_idea.child_ids.clone()
+    }
+
     pub fn get_child_names(ideas: &mut Vec<Idea>, id: usize) -> Vec<String> {
-        let child_ids = {
-            let parent_idea = Idea::get(ideas, id);
-            parent_idea.child_ids.clone()
-        };
+        let child_ids = Idea::get_child_ids(ideas, id);
 
         child_ids.into_iter().map(|id| Idea::get(ideas, id).name.clone()).collect()
     }
 
     pub fn get_child_id_by_name(ideas: &mut Vec<Idea>, id: usize, name: &str) -> Option<usize> {
         let child_names = Idea::get_child_names(ideas, id);
-        let child_ids = {
-            let idea = Idea::get(ideas, id);
-            idea.child_ids.clone()
-        };
+        let child_ids = Idea::get_child_ids(ideas, id);
 
-        for i in 0..child_names.len() {
-            if child_names[i] == name {
-                return Some(child_ids[i]);
+        for (idx, child_name) in child_names.into_iter().enumerate() {
+            if child_name == name {
+                return Some(child_ids[idx]);
             }
         }
 
         None
+    }
+
+    // Gets the list of tags that this Idea ignores in its children.
+    // These are defined as the tags applied to this idea's child with the name
+    // of .ignore, or if it doesn't, exist, the tags of its parent.
+    pub fn get_ignore_tags(ideas: &mut Vec<Idea>, id: usize) -> Vec<String> {
+        let parent_id = {
+            let idea = Idea::get(ideas, id);
+            idea.parent_id.clone()
+        };
+
+        let child_names = Idea::get_child_names(ideas, id);
+        let child_ids = Idea::get_child_ids(ideas, id);
+
+        if let Some(ignore_child_index) = child_names.into_iter().position(|name| name == ".ignore".to_string()) {
+            /*println!("found ignore child index");*/
+
+            return {
+                let idea = Idea::get(ideas, child_ids[ignore_child_index]);
+                idea.tags.clone()
+            }
+        }
+        else if let Some(parent_id) = parent_id {
+            /*println!("checking parent");*/
+
+            return Idea::get_ignore_tags(ideas, parent_id);
+        }
+        else {
+            /*println!("No ignore node found all the way up");*/
+            return vec![];
+        }
+    }
+
+    pub fn has_tag(ideas: &mut Vec<Idea>, id: usize, tag: &str) -> bool {
+        let tags = {
+            let idea = Idea::get(ideas, id);
+            &idea.tags
+        };
+
+        tags.contains(&tag.to_string())
+    }
+
+    pub fn has_one_of_tags(ideas: &mut Vec<Idea>, id: usize, tags: &Vec<String>) -> bool {
+        for tag in tags {
+            if Idea::has_tag(ideas, id, tag) {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn new(ideas: &mut Vec<Idea>, parent_id: usize) -> &mut Idea {
@@ -127,14 +177,24 @@ impl Idea {
             description: "Here's the root of all your brilliant Ideas.".to_string(),
             tags: vec![],
             parent_id: None,
-            child_ids: vec![]
+            child_ids: vec![1]
         };
-        IDEA_COUNT.fetch_add(1, Ordering::SeqCst);
+
+        let default_ignore_idea = Idea {
+            id: 1,
+            name: ".ignore".to_string(),
+            description: "".to_string(),
+            tags: vec!["done".to_string(), "paused".to_string(), "archived".to_string(), "hidden".to_string()],
+            parent_id: Some(0),
+            child_ids: vec![],
+        };
+
+        IDEA_COUNT.fetch_add(2, Ordering::SeqCst);
 
         // Load ideas from file, or create vec containing root idea and write
         // to new file
         let ideas = match file_buffer.len() {
-            0 => vec![default_root_idea],
+            0 => vec![default_root_idea, default_ignore_idea],
             _ => {
                 let idea_list: Vec<Idea> = serde_json::from_str(&file_buffer).unwrap();
                 IDEA_COUNT.store(idea_list.len(), Ordering::SeqCst);
@@ -214,7 +274,7 @@ fn main() {
         match matches.subcommand() {
             ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),
             ("describe", _) => describe(&mut ideas, selected_id),
-            ("list", _) => list(&mut ideas, selected_id),
+            ("list", _) => list(&mut ideas, selected_id, false), // TODO add a way to list all, even hidden
             ("print", _) => Idea::print(&mut ideas, selected_id),
             ("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),
             ("up", _) => up(&mut ideas, &mut selected_id),
@@ -266,12 +326,26 @@ fn add(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: usize) {
 // Answer: The mut is required because get() returns a mutable reference for
 // convenient edits. Once all Idea modification happens through an API, this
 // will be better.
-fn list(ideas: &mut Vec<Idea>, selected_id: usize) {
+fn list(ideas: &mut Vec<Idea>, selected_id: usize, all: bool) {
+    let child_ids = Idea::get_child_ids(ideas, selected_id);
     let child_names = Idea::get_child_names(ideas, selected_id);
-    let mut idx = 1;
-    for name in child_names {
-        println!("{}. {}", idx, name);
-        idx += 1;
+    let ignore_tags = Idea::get_ignore_tags(ideas, selected_id);
+
+    /*println!("Ignore tags: {:?}", ignore_tags);*/
+
+    let mut hidden = 0;
+    for (idx, name) in child_names.into_iter().enumerate() {
+        let first_char = name.chars().next().unwrap_or(' ');
+        if (first_char != '.' && !Idea::has_one_of_tags(ideas, child_ids[idx], &ignore_tags)) || all {
+            println!("{}. {}", idx+1, name);
+        }
+        else {
+            hidden += 1;
+        }
+    }
+    if hidden > 0 {
+        println!();
+        println!("- {} more hidden -", hidden);
     }
 }
 
@@ -293,6 +367,7 @@ fn select(matches: &ArgMatches, ideas: &mut Vec<Idea>, selected_id: &mut usize) 
         Err(_) => {
             // It could be a child name we wish to select by
             let child_name = matches.value_of("index").unwrap();
+            // TODO this only matches one-token names
 
             let new_selected_id = Idea::get_child_id_by_name(ideas, *selected_id, child_name).unwrap();
             *selected_id = new_selected_id;
