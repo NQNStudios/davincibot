@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 extern crate rusqlite;
 use rusqlite::{Connection, Row};
+use rusqlite::types::{ToSql, FromSql};
 
 #[macro_use]
 extern crate serde_derive;
@@ -29,48 +30,52 @@ use std::env;
 static IDEA_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 struct DaVinciTree {
-    conn: Connection
+    conn: Connection,
 }
 
+mod error;
+use error::*;
+
+
 impl DaVinciTree {
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<DaVinciTree, ()> {
-        match Connection::open(path) {
-            Ok(conn) => {
-                let tree = DaVinciTree { conn };
+    pub fn open<P: AsRef<Path>>(path: P) -> DVResult<DaVinciTree> {
+        let conn = Connection::open(path)?;
+        let tree = DaVinciTree { conn };
 
-                // Create the Idea table in the database if one doesn't exist. 
-                tree.conn.execute("CREATE TABLE IF NOT EXISTS ideas (
-                    id INTEGER PRIMARY KEY NOT NULL AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    description TEXT NOT NULL,
-                    tags TEXT NOT NULL,
+        // Create the Idea table in the database if one doesn't exist. 
+        tree.conn.execute("CREATE TABLE IF NOT EXISTS ideas (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            tags TEXT NOT NULL,
 
-                    parent_id INTEGER,
-                    child_ids TEXT NOT NULL,
-                    attachments TEXT NOT NULL,
-                    extras TEXT NOT NULL)", &[])?;
+            parent_id INTEGER,
+            child_ids TEXT NOT NULL,
+            attachments TEXT NOT NULL,
+            extras TEXT NOT NULL)", &[])?;
 
-                // Create the root Idea in the database if one doesn't exist.
-                // Also create a .ignore Idea to ignore the default ignore tags
-                if let Err(_) = tree.get_idea(0) {
-                    println!("No root idea");
-                }
-
-                Ok(tree)
-            },
-            _ => Err
+        // Create the root Idea in the database if one doesn't exist.
+        // Also create a .ignore Idea to ignore the default ignore tags
+        if let Err(_) = tree.get_idea(0) {
+            println!("No root idea");
         }
+
+        Ok(tree)
     }
 
-    pub fn get_idea(&self, id: u64) -> Result<Idea, ()> { 
-        let row = self.conn.query_row("SELECT value FROM ideas WHERE id=?", &id)?;
-        Ok(Idea::from(row))
+    pub fn get_name(&self, id: i64) -> DVResult<String> {
+        let name: String = self.conn.query_row("SELECT name FROM ideas WHERE id=?", &[&id], |row| { row.get(1) })?;
+        Ok(name)
+    }
+
+    pub fn get_idea(&self, id: u64) -> DVResult<Idea> { 
+        Ok(Idea { .. Default::default() })
     }
 }
 
 // An Idea is the basic building block of Da Vinci Bot.
 // TODO explain exactly how Ideas work and why
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 struct Idea {
     id: usize,
     name: String,
@@ -86,7 +91,7 @@ struct Idea {
 impl Idea {
 
     fn from<Row>(row: Row) -> Idea {
-        Idea { .. Default::defaults() }
+        Idea { .. Default::default() }
     }
 
     // TODO print() is probably a bad function name
@@ -270,7 +275,6 @@ impl Idea {
 
 fn main() {
     let tree = DaVinciTree::open("test.sqlite").expect("Failed to create Da Vinci tree."); 
-
 
     /*// Use Clap to parse the command-line arguments*/
     /*let app = app_from_crate!("\n")*/
