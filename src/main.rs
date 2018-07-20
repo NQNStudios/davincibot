@@ -1,4 +1,8 @@
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+
+extern crate rusqlite;
+use rusqlite::{Connection, Row};
+
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -15,6 +19,7 @@ extern crate subprocess;
 use subprocess::{Exec, Redirection};
 
 use std::vec::Vec;
+use std::path::Path;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io;
@@ -22,6 +27,46 @@ use std::io::Write;
 use std::env;
 
 static IDEA_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+
+struct DaVinciTree {
+    conn: Connection
+}
+
+impl DaVinciTree {
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<DaVinciTree, ()> {
+        match Connection::open(path) {
+            Ok(conn) => {
+                let tree = DaVinciTree { conn };
+
+                // Create the Idea table in the database if one doesn't exist. 
+                tree.conn.execute("CREATE TABLE IF NOT EXISTS ideas (
+                    id INTEGER PRIMARY KEY NOT NULL AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    tags TEXT NOT NULL,
+
+                    parent_id INTEGER,
+                    child_ids TEXT NOT NULL,
+                    attachments TEXT NOT NULL,
+                    extras TEXT NOT NULL)", &[])?;
+
+                // Create the root Idea in the database if one doesn't exist.
+                // Also create a .ignore Idea to ignore the default ignore tags
+                if let Err(_) = tree.get_idea(0) {
+                    println!("No root idea");
+                }
+
+                Ok(tree)
+            },
+            _ => Err
+        }
+    }
+
+    pub fn get_idea(&self, id: u64) -> Result<Idea, ()> { 
+        let row = self.conn.query_row("SELECT value FROM ideas WHERE id=?", &id)?;
+        Ok(Idea::from(row))
+    }
+}
 
 // An Idea is the basic building block of Da Vinci Bot.
 // TODO explain exactly how Ideas work and why
@@ -39,6 +84,11 @@ struct Idea {
 }
 
 impl Idea {
+
+    fn from<Row>(row: Row) -> Idea {
+        Idea { .. Default::defaults() }
+    }
+
     // TODO print() is probably a bad function name
     pub fn print(ideas: &mut Vec<Idea>, id: usize) {
         let idea = &ideas[id];
@@ -219,75 +269,78 @@ impl Idea {
 
 
 fn main() {
-    // Use Clap to parse the command-line arguments
-    let app = app_from_crate!("\n")
-        .arg(Arg::with_name("file").index(1).required(false));
-
-    let args = app.get_matches();
-
-    // The default Da Vinci File is hidden in the home directory.
-    let home_dir = env::home_dir().unwrap();
-    let home_dir = home_dir.to_str().unwrap();
-    let default_path = format!("{}/.davincibot.json", &home_dir);
-    let default_path = default_path.as_str();
-
-    // The file where Da Vinci Bot's Ideas are stored can be optionally
-    // specified as the first argument.
-    let path = args.value_of("file").unwrap_or(default_path);
-
-    let mut ideas = Idea::load(&path);
-
-    // TODO this is starting to get really ugly, perhaps with little benefit.
-    // Maybe remove the clap.rs dependency.
-    let mut repl = App::new("davincibot repl")
-        .setting(AppSettings::NoBinaryName)
-        .subcommand(SubCommand::with_name("add")
-                    .arg(Arg::with_name("idea_name").index(1).multiple(true).require_delimiter(false)))
-        .subcommand(SubCommand::with_name("describe"))
-        .subcommand(SubCommand::with_name("list"))
-        .subcommand(SubCommand::with_name("print"))
-        .subcommand(SubCommand::with_name("select")
-                    .arg(Arg::with_name("index").index(1)))
-        .subcommand(SubCommand::with_name("up"))
+    let tree = DaVinciTree::open("test.sqlite").expect("Failed to create Da Vinci tree."); 
 
 
-        // TODO need a traverse command which traverses children of node
-        .subcommand(SubCommand::with_name("tag")
-                    .arg(Arg::with_name("tags").index(1).multiple(true).require_delimiter(false)))
-        .subcommand(SubCommand::with_name("untag")
-                    .arg(Arg::with_name("tags").index(1).multiple(true).require_delimiter(false)))
-        // TODO need a clear all tags command
-        // TODO need a search by tag command
-        // (all of these will inevitably be rewritten post-Mentat)
-        .subcommand(SubCommand::with_name("exit"));
+    /*// Use Clap to parse the command-line arguments*/
+    /*let app = app_from_crate!("\n")*/
+        /*.arg(Arg::with_name("file").index(1).required(false));*/
 
-    let mut selected_id: usize = 0;
-    // In REPL fashion, allow the user to type as many Da Vinci commands as
-    // they want until "exit"
-    loop {
-        print!("$ ");
-        io::stdout().flush().unwrap();
-        let command: String = read!("{}\n");
+    /*let args = app.get_matches();*/
 
-        let matches = repl.get_matches_from_safe_borrow(command.split(" ")).unwrap();
+    /*// The default Da Vinci File is hidden in the home directory.*/
+    /*let home_dir = env::home_dir().unwrap();*/
+    /*let home_dir = home_dir.to_str().unwrap();*/
+    /*let default_path = format!("{}/.davincibot.json", &home_dir);*/
+    /*let default_path = default_path.as_str();*/
 
-        match matches.subcommand() {
-            ("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),
-            ("describe", _) => describe(&mut ideas, selected_id),
-            ("list", _) => list(&mut ideas, selected_id, false), // TODO add a way to list all, even hidden
-            ("print", _) => Idea::print(&mut ideas, selected_id),
-            ("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),
-            ("up", _) => up(&mut ideas, &mut selected_id),
-            ("tag", Some(sub_matches)) => set_tags(sub_matches, &mut ideas, selected_id, true),
-            ("untag", Some(sub_matches)) => set_tags(sub_matches, &mut ideas, selected_id, false),
-            ("exit", Some(_)) => break,
-            _ => panic!("not a valid REPL command")
-        };
+    /*// The file where Da Vinci Bot's Ideas are stored can be optionally*/
+    /*// specified as the first argument.*/
+    /*let path = args.value_of("file").unwrap_or(default_path);*/
 
-        // Ensure the Ideas are saved after every operation (TODO this may be
-        // inefficient. A database may help
-        Idea::write(&ideas, &path);
-    }
+    /*let mut ideas = Idea::load(&path);*/
+
+    /*// TODO this is starting to get really ugly, perhaps with little benefit.*/
+    /*// Maybe remove the clap.rs dependency.*/
+    /*let mut repl = App::new("davincibot repl")*/
+        /*.setting(AppSettings::NoBinaryName)*/
+        /*.subcommand(SubCommand::with_name("add")*/
+                    /*.arg(Arg::with_name("idea_name").index(1).multiple(true).require_delimiter(false)))*/
+        /*.subcommand(SubCommand::with_name("describe"))*/
+        /*.subcommand(SubCommand::with_name("list"))*/
+        /*.subcommand(SubCommand::with_name("print"))*/
+        /*.subcommand(SubCommand::with_name("select")*/
+                    /*.arg(Arg::with_name("index").index(1)))*/
+        /*.subcommand(SubCommand::with_name("up"))*/
+
+
+        /*// TODO need a traverse command which traverses children of node*/
+        /*.subcommand(SubCommand::with_name("tag")*/
+                    /*.arg(Arg::with_name("tags").index(1).multiple(true).require_delimiter(false)))*/
+        /*.subcommand(SubCommand::with_name("untag")*/
+                    /*.arg(Arg::with_name("tags").index(1).multiple(true).require_delimiter(false)))*/
+        /*// TODO need a clear all tags command*/
+        /*// TODO need a search by tag command*/
+        /*// (all of these will inevitably be rewritten post-Mentat)*/
+        /*.subcommand(SubCommand::with_name("exit"));*/
+
+    /*let mut selected_id: usize = 0;*/
+    /*// In REPL fashion, allow the user to type as many Da Vinci commands as*/
+    /*// they want until "exit"*/
+    /*loop {*/
+        /*print!("$ ");*/
+        /*io::stdout().flush().unwrap();*/
+        /*let command: String = read!("{}\n");*/
+
+        /*let matches = repl.get_matches_from_safe_borrow(command.split(" ")).unwrap();*/
+
+        /*match matches.subcommand() {*/
+            /*("add", Some(sub_matches)) => add(sub_matches, &mut ideas, selected_id),*/
+            /*("describe", _) => describe(&mut ideas, selected_id),*/
+            /*("list", _) => list(&mut ideas, selected_id, false), // TODO add a way to list all, even hidden*/
+            /*("print", _) => Idea::print(&mut ideas, selected_id),*/
+            /*("select", Some(sub_matches)) => select(sub_matches, &mut ideas, &mut selected_id),*/
+            /*("up", _) => up(&mut ideas, &mut selected_id),*/
+            /*("tag", Some(sub_matches)) => set_tags(sub_matches, &mut ideas, selected_id, true),*/
+            /*("untag", Some(sub_matches)) => set_tags(sub_matches, &mut ideas, selected_id, false),*/
+            /*("exit", Some(_)) => break,*/
+            /*_ => panic!("not a valid REPL command")*/
+        /*};*/
+
+        /*// Ensure the Ideas are saved after every operation (TODO this may be*/
+        /*// inefficient. A database may help*/
+        /*Idea::write(&ideas, &path);*/
+    /*}*/
 
 }
 
