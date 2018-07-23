@@ -46,7 +46,7 @@ impl IdeaTree {
         if let Err(_) = tree.get_idea(1) {
             tree.create_root_idea()?;
             println!("Root idea: {:?}", tree.get_idea(1));
-            tree.create_idea(1)?;
+            tree.create_idea(1, None)?;
             println!("Root idea after adding child: {:?}", tree.get_idea(1));
             println!("Child idea: {:?}", tree.get_idea(2));
         }
@@ -70,23 +70,39 @@ impl IdeaTree {
         Ok(())
     }
 
-    pub fn create_idea(&mut self, parent_id: i64) -> Result<i64> {
+    pub fn create_idea(&mut self, parent_id: i64, args: Option<[Option<&ToSql>; 4]>) -> Result<i64> {
         {
-            let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, parent_id, child_ids) VALUES (?, ?, ?, ?, ?)")?;
+            let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, child_ids, parent_id) VALUES (?, ?, ?, ?, ?)")?;
 
-            let args: &[&ToSql] = &[
+            let default_args: [&ToSql; 5] = [
                 &"", // Name
                 &"", // Description
                 &"[]", // Tags
-                &Null, // Parent ID
                 &"[]", // Child IDS
+                &Null, // Parent ID
             ];
 
-            statement.execute(args)?;
+            // TODO document how to create an Idea with preset field values
+            // by passing a ToSql array.
+            let mut creation_args = Vec::new();
+            if let Some(user_args) = args {
+                creation_args.extend(
+                    user_args.into_iter().enumerate().map(|arg| match arg {
+                        (_, Some(arg)) => arg.clone(),
+                        (idx, None) => default_args[idx].clone(),
+                    }));
+                creation_args.push(&Null);
+            }
+            else {
+                creation_args.extend(default_args.iter());
+            }
+
+
+            statement.execute(&creation_args)?;
         }
         let new_id = self.conn.last_insert_rowid();
 
-        self.set_idea_parent(new_id, parent_id)?;
+        self.set_parent(new_id, parent_id)?;
         Ok(new_id)
     }
 
@@ -135,7 +151,7 @@ impl IdeaTree {
         Ok(())
     }
 
-    pub fn set_idea_parent(&mut self, child_id: i64, parent_id: i64) -> Result<()> {
+    pub fn set_parent(&mut self, child_id: i64, parent_id: i64) -> Result<()> {
         // If the child idea already has a parent, remove it from the parent's list
         if let Some(old_parent_id) = self.get_parent_id(child_id)? {
             self.remove_child(old_parent_id, child_id)?;
@@ -155,9 +171,33 @@ impl IdeaTree {
     }
 
     pub fn get_tags(&self, id: i64) -> Result<Vec<String>> {
-        let tags_json: String = self.conn.query_row("SELECT description FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
+        let tags_json: String = self.conn.query_row("SELECT tags FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
         let tags: Vec<String> = serde_json::from_str(tags_json.as_str())?;
         Ok(tags)
+    }
+
+    pub fn set_tags(&mut self, id: i64, tags: Vec<String>) -> Result<()> {
+        let mut statement = self.conn.prepare_cached("UPDATE ideas SET tags=? WHERE id=?")?;
+
+        statement.execute(&[&serde_json::to_string(&tags)?, &id])?;
+        Ok(())
+    }
+
+    pub fn clear_tags(&mut self, id: i64) -> Result<()> {
+        self.set_tags(id, Vec::new())
+    }
+
+    pub fn remove_tags(&mut self, id: i64, tags: Vec<String>) -> Result<()> {
+        let mut new_tags = self.get_tags(id)?;
+        new_tags.retain(|tag| !tags.contains(tag));
+        self.set_tags(id, new_tags)
+    }
+
+    pub fn add_tags(&mut self, id: i64, tags: Vec<String>) -> Result<()> {
+        let mut new_tags = self.get_tags(id)?;
+        new_tags.extend(tags);
+
+        self.set_tags(id, new_tags)
     }
 
     pub fn get_parent_id(&self, id: i64) -> Result<Option<i64>> {

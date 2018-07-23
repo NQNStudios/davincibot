@@ -7,6 +7,7 @@ extern crate serde_json;
 pub enum Error {
     Rusqlite(rusqlite::Error),
     SerdeJson(serde_json::Error),
+    DaVinci(String),
 }
 
 impl From<rusqlite::Error> for Error {
