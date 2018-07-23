@@ -79,6 +79,7 @@ impl Repl {
             ("list", Some("all")) => list(self, tree, true),
             ("list", None) => list(self, tree, false),
             ("select", Some(expression)) => select(self, tree, expression),
+            ("up", None) => self.handle_command(tree, "select", Some("^")),
             ("add", None) => add_multiple(self, tree),
             ("add", Some(name)) => add(self, tree, name),
             ("tag", Some(tags)) => tag(self, tree, tags),
@@ -106,7 +107,7 @@ fn select(repl: &mut Repl, tree: &IdeaTree, expression: &str) -> Result<()> {
                 },
                 '0'...'9' => {
                     let child_index = text.parse::<usize>()?;
-                    let child_ids = tree.get_child_ids(repl.selected_id, true)?;
+                    let child_ids = tree.get_child_ids(repl.selected_id, false)?;
 
                     child_ids[child_index-1]
                 },// TODO parse index,
