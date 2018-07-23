@@ -46,7 +46,12 @@ impl IdeaTree {
         if let Err(_) = tree.get_idea(1) {
             tree.create_root_idea()?;
             println!("Root idea: {:?}", tree.get_idea(1));
-            tree.create_idea(1, None)?;
+            tree.create_idea(1, Some([
+                                     Some(&".ignore"),
+                                     Some(&"The tags applied to this Idea will be hidden when listing children of this Idea's parent or any of its children that don't have their own .ignore child."),
+                                     Some(&serde_json::to_string(&vec![&"done", &"hidden", &"archived", &"paused"])?),
+                                     None,
+            ]))?;
             println!("Root idea after adding child: {:?}", tree.get_idea(1));
             println!("Child idea: {:?}", tree.get_idea(2));
         }
@@ -70,6 +75,7 @@ impl IdeaTree {
         Ok(())
     }
 
+    // TODO need to validate the names of ideas being created, or renamed
     pub fn create_idea(&mut self, parent_id: i64, args: Option<[Option<&ToSql>; 4]>) -> Result<i64> {
         {
             let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, child_ids, parent_id) VALUES (?, ?, ?, ?, ?)")?;
@@ -108,7 +114,7 @@ impl IdeaTree {
 
 
     fn add_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
-        let mut child_ids = self.get_child_ids(parent_id)?;
+        let mut child_ids = self.get_child_ids(parent_id, true)?;
         child_ids.push(child_id);
 
         let mut statement = self.conn.prepare_cached("UPDATE ideas SET child_ids=? where id=?")?;
@@ -131,7 +137,7 @@ impl IdeaTree {
 
     fn remove_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
         // Remove the child from the child list of its parent
-        let mut child_ids = self.get_child_ids(parent_id)?;
+        let mut child_ids = self.get_child_ids(parent_id, true)?;
         child_ids.retain(|&id| id != child_id);
         let mut statement = self.conn.prepare_cached("UPDATE ideas SET child_ids=? where id=?")?;
         let args: &[&ToSql] = &[
@@ -209,9 +215,47 @@ impl IdeaTree {
         }
     }
 
-    pub fn get_child_ids(&self, id: i64) -> Result<Vec<i64>> {
+    fn get_ignore_tags(&self, id: i64) -> Result<Vec<String>> {
+        let idea = self.get_idea(id)?;
+        // First check if this idea has an .ignore child to pull tags from
+        for child_id in idea.child_ids{
+            let child_idea = self.get_idea(child_id)?;
+            if child_idea.name == ".ignore" {
+                return Ok(child_idea.tags);
+            }
+        }
+
+        // If not, check if the parent has an .ignore child and return those
+        if let Some(parent_id) = idea.parent_id {
+            return self.get_ignore_tags(parent_id);
+        }
+
+        Ok(Vec::new())
+    }
+
+    pub fn get_child_ids(&self, id: i64, include_hidden: bool) -> Result<Vec<i64>> {
         let child_ids_json: String = self.conn.query_row("SELECT child_ids FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
-        let child_ids: Vec<i64> = serde_json::from_str(child_ids_json.as_str())?;
+        let mut child_ids: Vec<i64> = serde_json::from_str(child_ids_json.as_str())?;
+
+        // TODO get the tags of this Idea's ignore child, or parent's ignore
+        // child
+        let ignore_tags = self.get_ignore_tags(id)?;
+
+        if !include_hidden {
+            child_ids.retain(|child_id| {
+                let idea = self.get_idea(*child_id).unwrap();
+                if idea.name.chars().into_iter().next().unwrap_or(' ') == '.' {
+                    return false;
+                }
+                for ignore_tag in &ignore_tags {
+                    if idea.tags.contains(ignore_tag) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
         Ok(child_ids)
     }
 

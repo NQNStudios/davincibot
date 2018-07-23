@@ -59,6 +59,9 @@ impl Repl {
             // The / operator chains a command on multiple inputs given on
             // the same line
             if let Some(inputs_present) = inputs {
+                // TODO it may be possible, when terminating command with /, to
+                // pass empty input to a command (which is bad!) Need to split
+                // by / as a terminator.
                 for input in inputs_present.split("/") {
                     self.handle_command(tree, command, Some(input))?;
                 }
@@ -75,6 +78,7 @@ impl Repl {
             ("print", None) => print(self, tree),
             ("list", Some("all")) => list(self, tree, true),
             ("list", None) => list(self, tree, false),
+            ("select", Some(expression)) => select(self, tree, expression),
             ("add", None) => add_multiple(self, tree),
             ("add", Some(name)) => add(self, tree, name),
             ("tag", Some(tags)) => tag(self, tree, tags),
@@ -83,6 +87,50 @@ impl Repl {
             (c, i) => Err(Error::DaVinci(format!("Bad Da Vinci command: {} {:?}", c, i))),
         }
     }
+}
+
+fn select(repl: &mut Repl, tree: &IdeaTree, expression: &str) -> Result<()> {
+    repl.selected_id = match expression {
+        // @ is the operator for selecting the root Idea
+        "@" => 1,
+        // ^ is the operator for selecting the parent Idea
+        "^" => tree.get_idea(repl.selected_id)?.parent_id.unwrap_or(1),
+        text => {
+            let first_char = {
+                text.chars().next().unwrap()
+            };
+            match first_char {
+                '#' => {
+                    let absolute_id: String = text.chars().skip(1).collect();
+                    absolute_id.parse::<i64>()?
+                },
+                '0'...'9' => {
+                    let child_index = text.parse::<usize>()?;
+                    let child_ids = tree.get_child_ids(repl.selected_id, true)?;
+
+                    child_ids[child_index-1]
+                },// TODO parse index,
+                other => {
+                    let child_ids = tree.get_child_ids(repl.selected_id, true)?;
+                    let mut selected_id: Option<i64> = None;
+
+                    for child_id in child_ids {
+                        if tree.get_name(child_id)? == text {
+                            selected_id = Some(child_id);
+                        }
+                    }
+
+                    if selected_id == None {
+                        return Err(Error::DaVinci(format!("Selected Idea has no child named \"{}\"", text)));
+                    }
+
+                    selected_id.unwrap()
+                }
+            }
+        }
+    };
+
+    Ok(())
 }
 
 fn tag(repl: &Repl, tree: &mut IdeaTree, tags: &str) -> Result<()> {
@@ -118,8 +166,9 @@ fn print(repl: &Repl, tree: &IdeaTree) -> Result<()> {
     Ok(())
 }
 
+// TODO don't list hidden ones with a numeric index even when show_all is given
 fn list(repl: &Repl, tree: &IdeaTree, show_all: bool) -> Result<()> {
-    let child_ids = tree.get_child_ids(repl.selected_id)?;
+    let child_ids = tree.get_child_ids(repl.selected_id, show_all)?;
 
     for (child_idx, id) in child_ids.into_iter().enumerate() {
         let child_name = tree.get_name(id)?;
