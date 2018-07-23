@@ -40,8 +40,15 @@ impl Repl {
     }
 
     pub fn run(&mut self, tree: &mut IdeaTree) {
-        Self::prompt("$".to_string(), |command| {
-            println!("{}", command);
+        Self::prompt("$".to_string(), |input_line| {
+            let parts = input_line.splitn(" ", 2);
+            let command = parts.next()?;
+            let inputs = parts.next()?;
+            for input in inputs.split("/") {
+                // TODO perform the command on the input!
+                // The / operator chains a command on multiple inputs given on
+                // the same line
+            }
             Ok(())
         });
     }
