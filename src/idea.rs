@@ -44,9 +44,9 @@ impl IdeaTree {
         // Create the root Idea in the database if one doesn't exist.
         // Also create a .ignore Idea to ignore the default ignore tags
         if let Err(_) = tree.get_idea(1) {
-            tree.create_idea(None)?;
+            tree.create_root_idea()?;
             println!("Root idea: {:?}", tree.get_idea(1));
-            tree.create_idea(Some(1))?;
+            tree.create_idea(1)?;
             println!("Root idea after adding child: {:?}", tree.get_idea(1));
             println!("Child idea: {:?}", tree.get_idea(2));
         }
@@ -54,49 +54,94 @@ impl IdeaTree {
         Ok(tree)
     }
 
-    pub fn create_idea(&mut self, parent_id: Option<i64>) -> Result<i64> {
-        // Get the new id
-        let parent_id: i64 = parent_id.unwrap_or(-1);
+    fn create_root_idea(&mut self) -> Result<()> {
+        let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, parent_id, child_ids) VALUES (?, ?, ?, ?, ?)")?;
 
-        let mut id_arg: &ToSql = &Null;
-        if parent_id > 0 {
-            id_arg = &parent_id;
-        }
 
+        let args: &[&ToSql] = &[
+            &"Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time!", // Name
+            &"This is the root Idea for your Da Vinci Bot project.", // Description
+            &"[]", // Tags
+            &Null, // Parent ID
+            &"[]", // Child IDS
+        ];
+
+        statement.execute(args)?;
+        Ok(())
+    }
+
+    pub fn create_idea(&mut self, parent_id: i64) -> Result<i64> {
         {
             let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, parent_id, child_ids) VALUES (?, ?, ?, ?, ?)")?;
-
 
             let args: &[&ToSql] = &[
                 &"", // Name
                 &"", // Description
                 &"[]", // Tags
-                id_arg,
+                &Null, // Parent ID
                 &"[]", // Child IDS
             ];
 
-            let rows_changed = statement.execute(args)?;
-
-            if rows_changed != 1 {
-                panic!("Sqlite Idea insertion claims to be successful, but modified {} rows instead of 1", rows_changed); 
-            }
+            statement.execute(args)?;
         }
-
         let new_id = self.conn.last_insert_rowid();
 
-        if parent_id > 0 {
-            let mut parent_child_ids = self.get_child_ids(parent_id)?;
-            parent_child_ids.push(new_id);
-            let new_child_ids = serde_json::to_string(&parent_child_ids)?;
-
-            {
-                let mut statement = self.conn.prepare_cached("UPDATE ideas SET child_ids=? where id=?")?;
-                let args: &[&ToSql] = &[&new_child_ids, &parent_id.clone()];
-                statement.execute(args)?;
-            }
-        }
-
+        self.set_idea_parent(new_id, parent_id)?;
         Ok(new_id)
+    }
+
+
+    fn add_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
+        let mut child_ids = self.get_child_ids(parent_id)?;
+        child_ids.push(child_id);
+
+        let mut statement = self.conn.prepare_cached("UPDATE ideas SET child_ids=? where id=?")?;
+        let args: &[&ToSql] = &[
+            &serde_json::to_string(&child_ids)?,
+            &parent_id
+        ];
+
+        statement.execute(args)?;
+
+        // Set the child's parent ID to the new parent ID
+        let mut statement = self.conn.prepare_cached("UPDATE ideas SET parent_id=? where id=?")?;
+        let args: &[&ToSql] = &[
+            &parent_id,
+            &child_id
+        ];
+        statement.execute(args)?;
+        Ok(())
+    }
+
+    fn remove_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
+        // Remove the child from the child list of its parent
+        let mut child_ids = self.get_child_ids(parent_id)?;
+        child_ids.retain(|&id| id != child_id);
+        let mut statement = self.conn.prepare_cached("UPDATE ideas SET child_ids=? where id=?")?;
+        let args: &[&ToSql] = &[
+            &serde_json::to_string(&child_ids)?,
+            &parent_id
+        ];
+
+        statement.execute(args)?;
+
+        // Set the child's parent ID to null
+        let mut statement = self.conn.prepare_cached("UPDATE ideas SET parent_id=? where id=?")?;
+        let args: &[&ToSql] = &[
+            &Null,
+            &child_id
+        ];
+        statement.execute(args)?;
+        Ok(())
+    }
+
+    pub fn set_idea_parent(&mut self, child_id: i64, parent_id: i64) -> Result<()> {
+        // If the child idea already has a parent, remove it from the parent's list
+        if let Some(old_parent_id) = self.get_parent_id(child_id)? {
+            self.remove_child(old_parent_id, child_id)?;
+        }
+        self.add_child(parent_id, child_id)?;
+        Ok(())
     }
 
     pub fn get_name(&self, id: i64) -> Result<String> {
