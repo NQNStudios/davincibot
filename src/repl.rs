@@ -8,7 +8,7 @@ use error::{Result, Error};
 // Allow the user to keep entering values for a prompt as many times
 // as they want until they type "exit"
 fn prompt<C>(prefix: &str, mut callback: C)
-    where C: FnMut(&str) -> Result<()>
+    where C: FnMut(&str) -> Result<bool>
 {
     loop {
         print!("{} ", prefix);
@@ -20,8 +20,10 @@ fn prompt<C>(prefix: &str, mut callback: C)
                     break;
                 }
                 else {
-                    if let Err(e) = callback(&mut input.trim()) {
-                        println!("Error processing console input: {:?}", e);
+                    match callback(&mut input.trim()) {
+                        Ok(true) => { },
+                        Ok(false) => break,
+                        Err(e) => println!("Error processing console input: {:?}", e),
                     }
                 }
             }
@@ -31,6 +33,18 @@ fn prompt<C>(prefix: &str, mut callback: C)
             },
         };
     }
+}
+
+fn prompt_for_args(arg_names: Vec<&str>) -> Vec<String> {
+    let mut arg_values = Vec::new();
+    for arg_name in arg_names {
+        prompt(&format!("{}:", arg_name), |arg_value| {
+            arg_values.push(arg_value.to_string());
+            Ok(false)
+        });
+    }
+
+    arg_values
 }
 
 pub struct Repl {
@@ -56,20 +70,9 @@ impl Repl {
             let command = parts.next().unwrap();
             let inputs = parts.next();
 
-            // The / operator chains a command on multiple inputs given on
-            // the same line
-            if let Some(inputs_present) = inputs {
-                // TODO it may be possible, when terminating command with /, to
-                // pass empty input to a command (which is bad!) Need to split
-                // by / as a terminator.
-                for input in inputs_present.split("/") {
-                    self.handle_command(tree, command, Some(input))?;
-                }
-            }
-            else {
-                self.handle_command(tree, command, None)?;
-            }
-            Ok(())
+            self.handle_command(tree, command, inputs)?;
+
+            Ok(true)
         });
     }
 
@@ -80,22 +83,33 @@ impl Repl {
             ("list", None) => list(self, tree, false),
             ("select", Some(expression)) => select(self, tree, expression),
             ("up", None) => self.handle_command(tree, "select", Some("^")),
+            ("root", None) => self.handle_command(tree, "select", Some("@")),
             ("add", None) => add_multiple(self, tree),
             ("add", Some(name)) => add(self, tree, name),
             ("tag", Some(tags)) => tag(self, tree, tags),
             ("untag", Some(tags)) => untag(self, tree, tags),
             ("cleartags", None) => cleartags(self, tree),
+            ("move", None) => move_idea(self, tree),
+            ("move", Some(_)) => Err(Error::DaVinci("Hint: Try calling 'move' without any arguments.".to_string())),
             (c, i) => Err(Error::DaVinci(format!("Bad Da Vinci command: {} {:?}", c, i))),
         }
     }
 }
 
-fn select(repl: &mut Repl, tree: &IdeaTree, expression: &str) -> Result<()> {
-    repl.selected_id = match expression {
+fn select_from_expression(repl: &Repl, tree: &IdeaTree, expression: &str) -> Result<i64> {
+    if expression.contains('/') {
+        let mut temp_selected = repl.selected_id;
+        for part in expression.split_terminator('/') {
+            temp_selected = select_from_expression(&Repl { selected_id: temp_selected }, tree, part)?;
+        }
+        return Ok(temp_selected);
+    }
+
+    match expression {
         // @ is the operator for selecting the root Idea
-        "@" => 1,
+        "@" => Ok(1),
         // ^ is the operator for selecting the parent Idea
-        "^" => tree.get_idea(repl.selected_id)?.parent_id.unwrap_or(1),
+        "^" => Ok(tree.get_idea(repl.selected_id)?.parent_id.unwrap_or(1)),
         text => {
             let first_char = {
                 text.chars().next().unwrap()
@@ -103,13 +117,13 @@ fn select(repl: &mut Repl, tree: &IdeaTree, expression: &str) -> Result<()> {
             match first_char {
                 '#' => {
                     let absolute_id: String = text.chars().skip(1).collect();
-                    absolute_id.parse::<i64>()?
+                    return Ok(absolute_id.parse::<i64>()?);
                 },
                 '0'...'9' => {
                     let child_index = text.parse::<usize>()?;
                     let child_ids = tree.get_child_ids(repl.selected_id, false)?;
 
-                    child_ids[child_index-1]
+                    Ok(child_ids[child_index-1])
                 },// TODO parse index,
                 other => {
                     let child_ids = tree.get_child_ids(repl.selected_id, true)?;
@@ -125,13 +139,24 @@ fn select(repl: &mut Repl, tree: &IdeaTree, expression: &str) -> Result<()> {
                         return Err(Error::DaVinci(format!("Selected Idea has no child named \"{}\"", text)));
                     }
 
-                    selected_id.unwrap()
+                    Ok(selected_id.unwrap())
                 }
             }
         }
-    };
+    }
+}
+
+fn select(repl: &mut Repl, tree: &IdeaTree, expression: &str) -> Result<()> {
+    repl.selected_id = select_from_expression(repl, tree, expression)?;
 
     Ok(())
+}
+
+fn move_idea(repl: &Repl, tree: &mut IdeaTree) -> Result<()> {
+    let args = prompt_for_args(vec!["idea to move", "destination"]);
+    let id_to_move = select_from_expression(repl, tree, args[0].as_str())?;
+    let new_parent_id = select_from_expression(repl, tree, args[1].as_str())?;
+    tree.set_parent(id_to_move, new_parent_id)
 }
 
 fn tag(repl: &Repl, tree: &mut IdeaTree, tags: &str) -> Result<()> {
@@ -187,7 +212,7 @@ fn add(repl: &Repl, tree: &mut IdeaTree, name: &str) -> Result<()> {
 fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree) -> Result<()> {
     prompt("->", |name: &str| {
         tree.create_idea(repl.selected_id, Some([Some(&name), None, None, None]))?;
-        Ok(())
+        Ok(true)
     });
 
     Ok(())

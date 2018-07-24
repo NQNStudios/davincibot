@@ -52,8 +52,8 @@ impl IdeaTree {
                                      Some(&serde_json::to_string(&vec![&"done", &"hidden", &"archived", &"paused"])?),
                                      None,
             ]))?;
-            println!("Root idea after adding child: {:?}", tree.get_idea(1));
-            println!("Child idea: {:?}", tree.get_idea(2));
+            /*println!("Root idea after adding child: {:?}", tree.get_idea(1));*/
+            /*println!("Child idea: {:?}", tree.get_idea(2));*/
         }
 
         Ok(tree)
@@ -78,7 +78,7 @@ impl IdeaTree {
     // TODO need to validate the names of ideas being created, or renamed
     pub fn create_idea(&mut self, parent_id: i64, args: Option<[Option<&ToSql>; 4]>) -> Result<i64> {
         {
-            let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, child_ids, parent_id) VALUES (?, ?, ?, ?, ?)")?;
+            let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, child_ids, parent_id) VALUES (?, ?, ?, ?, ?)")?; 
 
             let default_args: [&ToSql; 5] = [
                 &"", // Name
@@ -91,6 +91,7 @@ impl IdeaTree {
             // TODO document how to create an Idea with preset field values
             // by passing a ToSql array.
             let mut creation_args = Vec::new();
+            
             if let Some(user_args) = args {
                 creation_args.extend(
                     user_args.into_iter().enumerate().map(|arg| match arg {
