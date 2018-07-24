@@ -1,0 +1,21 @@
+[package]
+authors = [
+    "Nat Quayle Nelson <natquaylenelson@gmail.com>",
+    "Sid Shanker <sshanker220@gmail.com>",
+    "Omayeli Arenyeka <aomayeli@gmail.com>",
+    "Kevin Martin <kevinmartinucr@gmail.com>",
+]
+exclude = [
+    "deprecated/*"
+]
+name = "davincibot"
+description="A command-line utility for managing absurdly eclectic interests."
+license="GPL-3.0"
+version = "0.0.2"
+[dependencies]
+serde = "1.0.69"
+serde_derive = "1.0.69"
+serde_json = "1.0.22"
+clap = { version = "2.32.0", features = ["yaml"] }
+subprocess = "0.1.13"
+rusqlite = "0.13.0"
