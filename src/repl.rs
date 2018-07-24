@@ -35,16 +35,20 @@ fn prompt<C>(prefix: &str, mut callback: C)
     }
 }
 
-fn prompt_for_args(arg_names: Vec<&str>) -> Vec<String> {
+fn prompt_for_args(arg_names: Vec<&str>) -> Result<Vec<String>> {
     let mut arg_values = Vec::new();
-    for arg_name in arg_names {
-        prompt(&format!("{}:", arg_name), |arg_value| {
+    for arg_name in &arg_names {
+        prompt(&format!("{}", arg_name), |arg_value| {
             arg_values.push(arg_value.to_string());
             Ok(false)
         });
     }
 
-    arg_values
+    if arg_values.len() != arg_names.len() {
+        return Err(Error::DaVinci(format!("User didn't supply all values for {:?}", arg_names)));
+    }
+
+    Ok(arg_values)
 }
 
 pub struct Repl {
@@ -89,8 +93,8 @@ impl Repl {
             ("tag", Some(tags)) => tag(self, tree, tags),
             ("untag", Some(tags)) => untag(self, tree, tags),
             ("cleartags", None) => cleartags(self, tree),
-            ("move", None) => move_idea(self, tree),
-            ("move", Some(_)) => Err(Error::DaVinci("Hint: Try calling 'move' without any arguments.".to_string())),
+            ("move", None) => move_multiple(self, tree),
+            ("move", Some(inputs)) => move_one(self, tree, inputs),
             (c, i) => Err(Error::DaVinci(format!("Bad Da Vinci command: {} {:?}", c, i))),
         }
     }
@@ -122,10 +126,13 @@ fn select_from_expression(repl: &Repl, tree: &IdeaTree, expression: &str) -> Res
                 '0'...'9' => {
                     let child_index = text.parse::<usize>()?;
                     let child_ids = tree.get_child_ids(repl.selected_id, false)?;
+                    if child_ids.len() < child_index {
+                        return Err(Error::DaVinci(format!("Tried to select child {} from an Idea that only has {} children", child_index, child_ids.len())));
+                    }
 
                     Ok(child_ids[child_index-1])
-                },// TODO parse index,
-                other => {
+                },
+                _ => {
                     let child_ids = tree.get_child_ids(repl.selected_id, true)?;
                     let mut selected_id: Option<i64> = None;
 
@@ -152,11 +159,29 @@ fn select(repl: &mut Repl, tree: &IdeaTree, expression: &str) -> Result<()> {
     Ok(())
 }
 
-fn move_idea(repl: &Repl, tree: &mut IdeaTree) -> Result<()> {
-    let args = prompt_for_args(vec!["idea to move", "destination"]);
-    let id_to_move = select_from_expression(repl, tree, args[0].as_str())?;
-    let new_parent_id = select_from_expression(repl, tree, args[1].as_str())?;
-    tree.set_parent(id_to_move, new_parent_id)
+fn move_multiple(repl: &Repl, tree: &mut IdeaTree) -> Result<()> {
+    let parent_id = select_from_expression(repl, tree, &prompt_for_args(vec!["destination?"])?[0])?;
+    prompt("idea to move: ", |select_expression| {
+        let id_to_move = select_from_expression(repl, tree, select_expression)?;
+        tree.set_parent(id_to_move, parent_id)?;
+        Ok(true)
+    });
+
+    Ok(())
+}
+
+fn move_one(repl: &Repl, tree: &mut IdeaTree, inputs: &str) -> Result<()> {
+    let parts: Vec<&str> = inputs.split("->").map(|part| part.trim()).collect();
+    if parts.len() != 2 {
+        return Err(Error::DaVinci("'move' can either be called with no arguments, or with 2 separated by '->'".to_string()));
+    }
+
+    let id_to_move = select_from_expression(repl, tree, parts[0])?;
+    let parent_id = select_from_expression(repl, tree, parts[1])?;
+
+    tree.set_parent(id_to_move, parent_id);
+
+    Ok(())
 }
 
 fn tag(repl: &Repl, tree: &mut IdeaTree, tags: &str) -> Result<()> {

@@ -45,7 +45,7 @@ impl IdeaTree {
         // Also create a .ignore Idea to ignore the default ignore tags
         if let Err(_) = tree.get_idea(1) {
             tree.create_root_idea()?;
-            println!("Root idea: {:?}", tree.get_idea(1));
+            /*println!("Root idea: {:?}", tree.get_idea(1));*/
             tree.create_idea(1, Some([
                                      Some(&".ignore"),
                                      Some(&"The tags applied to this Idea will be hidden when listing children of this Idea's parent or any of its children that don't have their own .ignore child."),
@@ -76,10 +76,13 @@ impl IdeaTree {
     }
 
     // TODO need to validate the names of ideas being created, or renamed
+    // Names should not be able to
+    // contain:  "->",
+    // start with: "exit", "/", "^", "@", or a digit
+    // or have leading/trailing whitespace
     pub fn create_idea(&mut self, parent_id: i64, args: Option<[Option<&ToSql>; 4]>) -> Result<i64> {
         {
             let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, child_ids, parent_id) VALUES (?, ?, ?, ?, ?)")?; 
-
             let default_args: [&ToSql; 5] = [
                 &"", // Name
                 &"", // Description
