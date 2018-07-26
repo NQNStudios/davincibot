@@ -5,76 +5,153 @@ use std::collections::HashMap;
 use idea::IdeaTree;
 use error::{Result, Error};
 
-// Allow the user to keep entering values for a prompt as many times
-// as they want until they type "exit"
-fn prompt<C>(prefix: &str, mut callback: C)
-    where C: FnMut(&str) -> Result<bool>
-{
-    loop {
-        print!("{} ", prefix);
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        match io::stdin().read_line(&mut input) {
-            Ok(_) => {
-                if input == "exit\n" {
-                    break;
-                }
-                else {
-                    match callback(&mut input.trim()) {
-                        Ok(true) => { },
-                        Ok(false) => break,
-                        Err(e) => println!("Error processing console input: {:?}", e),
-                    }
-                }
-            }
-            Err(e) => {
-                println!("Error getting console input: {:?}", e);
-                continue
-            },
-        };
+enum CommandArgs {
+    Zero,
+    Amount(n: usize),
+    Range { min: usize, max: usize }
+}
+
+impl CommandArgs {
+    fn matches(&self, num_args: usize): bool {
+        match self {
+            Zero => num_args == 0,
+            Amount(n) => num_args == n,
+            Range { min, max } => min <= num_args && num_args <= max,
+        }
     }
 }
 
-fn prompt_for_args(arg_names: Vec<&str>) -> Result<Vec<String>> {
-    let mut arg_values = Vec::new();
-    for arg_name in &arg_names {
-        prompt(&format!("{}", arg_name), |arg_value| {
-            arg_values.push(arg_value.to_string());
-            Ok(false)
-        });
-    }
+type CommandImplementation = FnMut(Vec<String>) -> Result<()>;
 
-    if arg_values.len() != arg_names.len() {
-        return Err(Error::DaVinci(format!("User didn't supply all values for {:?}", arg_names)));
-    }
+struct CommandHandler = (CommandArgs, Box<CommandImplementation>);
 
-    Ok(arg_values)
+struct HandlerList {
+    delimiter: Option<String>,
+    handlers: Vec<CommandHandler>,
+    // TODO this might be enough information to print usage info on any
+    // malformed command
 }
 
 pub struct Repl {
     selected_id: i64,
+    commands: HashMap<String, HandlerList>,
+    delimiters: Vec<String>,
 }
 
 impl Repl {
     pub fn new() -> Repl {
-        Repl { 
+        let mut repl = Repl { 
             selected_id: 1,
+            commands: HashMap::new(),
+            delimiters: vec!["/", "->", " "],
+        };
+
+        // TODO register the core commands
+    }
+
+    fn register_core_command(&mut self, key: &str, delimiter: &str) {
+
+    }
+
+    pub fn register_command(&mut self, tree: &IdeaTree, key: &str, delimiter: Option<String>) -> Result<()> {
+        if let Some(d) = delimiter {
+
+        }
+
+        self.commands[key.to_string()] = HandlerList {
+            delimiter: delimiter,
+            handlers: vec![],
+        };
+    }
+
+    // Allow the user to keep entering values for a prompt as many times
+    // as they want until they type "exit"
+    fn prompt<C>(prefix: &str, mut callback: C)
+        where C: FnMut(&str) -> Result<bool>
+    {
+        loop {
+            print!("{} ", prefix);
+            io::stdout().flush().unwrap();
+            let mut input = String::new();
+            match io::stdin().read_line(&mut input) {
+                Ok(_) => {
+                    if input == "exit\n" {
+                        break;
+                    }
+                    else {
+                        match callback(&mut input.trim()) {
+                            Ok(true) => { },
+                            Ok(false) => break,
+                            Err(e) => println!("Error processing console input: {:?}", e),
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("Error getting console input: {:?}", e);
+                    continue
+                },
+            };
         }
     }
 
+    fn prompt_for_args(arg_names: Vec<&str>) -> Result<Vec<String>> {
+        let mut arg_values = Vec::new();
+        for arg_name in &arg_names {
+            prompt(&format!("{}", arg_name), |arg_value| {
+                arg_values.push(arg_value.to_string());
+                Ok(false)
+            });
+        }
+
+        if arg_values.len() != arg_names.len() {
+            return Err(Error::DaVinci(format!("User didn't supply all values for {:?}", arg_names)));
+        }
+
+        Ok(arg_values)
+    }
+
+
     pub fn run(&mut self, tree: &mut IdeaTree) {
         prompt("$", |input_line| {
-            let mut parts = input_line.splitn(2, " ");
-            // TODO once the try_trait feature and ? for Options becomes
-            // stable, this next line
-            // should be replaced with:
-            /*
-            let command = parts.next()?;
-            */
-            let command = parts.next().unwrap();
-            let inputs = parts.next();
+            // An empty query is a no-op
+            if input_line.len() == 0 {
+                return Ok(true)
+            }
 
-            self.handle_command(tree, command, inputs)?;
+            // The first token of every input line should be a valid command name
+            let mut parts = input_line.splitn(2, " ");
+            let command = parts.next().unwrap();
+
+            if self.commands.contains(command) {
+                let handler_list = commands[command];
+
+                let args = match parts.next() {
+                    Some(inputs) => match inputs.len() {
+                        0 => Vec::new(),
+                        _ => match handler_list.delimiter {
+                            Some(delimiter) => inputs.split(delimiter).map(|arg| arg.trim()).collect(),
+                            None => vec![inputs]
+                        }
+                    },
+                    None => Vec::new()
+                };
+
+                // Check which of this command's handlers matches the number of
+                // given inputs
+                for (handler, implementation) in handler_list {
+                    if handler.args.matches(args.len()) {
+                        if let Err(e) = implementation(args) {
+                            println!("'{}' command returned an error: {:?}", command, e);
+                        }
+                    }
+                }
+
+            }
+            else {
+                println!("There is no Da Vinci Bot command named {}", command);
+
+                Ok(true)
+            }
 
             Ok(true)
         });
