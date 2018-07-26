@@ -8,7 +8,10 @@ use error::{Result, Error};
 pub enum CommandArgs {
     Zero,
     Amount(usize),
+    Minimum(usize),
+    Maximum(usize),
     Range { min: usize, max: usize },
+    VarArgs,
 }
 
 impl CommandArgs {
@@ -17,6 +20,10 @@ impl CommandArgs {
             CommandArgs::Zero => num_args == 0,
             CommandArgs::Amount(n) => num_args == *n,
             CommandArgs::Range { min, max } => *min <= num_args && num_args <= *max,
+            CommandArgs::Minimum(min) => *min <= num_args,
+            CommandArgs::Maximum(max) => *max >= num_args,
+
+            CommandArgs::VarArgs => true,
         }
     }
 }
@@ -157,25 +164,6 @@ impl Repl {
             Ok(true)
         });
     }
-
-    /*fn handle_command(&mut self, tree: &mut IdeaTree, command: &str, input: Option<&str>) -> Result<()> {*/
-        /*match (command, input) {*/
-            /*("print", None) => print(self, tree),*/
-            /*("list", Some("all")) => list(self, tree, true),*/
-            /*("list", None) => list(self, tree, false),*/
-            /*("select", Some(expression)) => select(self, tree, expression),*/
-            /*("up", None) => self.handle_command(tree, "select", Some("^")),*/
-            /*("root", None) => self.handle_command(tree, "select", Some("@")),*/
-            /*("add", None) => add_multiple(self, tree),*/
-            /*("add", Some(name)) => add(self, tree, name),*/
-            /*("tag", Some(tags)) => tag(self, tree, tags),*/
-            /*("untag", Some(tags)) => untag(self, tree, tags),*/
-            /*("cleartags", None) => cleartags(self, tree),*/
-            /*("move", None) => move_multiple(self, tree),*/
-            /*("move", Some(inputs)) => move_one(self, tree, inputs),*/
-            /*(c, i) => Err(Error::DaVinci(format!("Bad Da Vinci command: {} {:?}", c, i))),*/
-        /*}*/
-    /*}*/
 
     fn select_from_expression_internal(selected_id: i64, tree: &IdeaTree, expression: &str) -> Result<i64> {
         match expression {
