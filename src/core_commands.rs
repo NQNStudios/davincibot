@@ -47,12 +47,28 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
                 CommandHandler::new(CommandArgs::Minimum(1), add),
             ],
         });
+        commands.insert("tag".to_string(), HandlerList {
+            delimiter: Some(" ".to_string()),
+            handlers: vec![
+                CommandHandler::new(CommandArgs::Zero, tag_multiple),
+                CommandHandler::new(CommandArgs::Minimum(1), tag),
+            ],
+        });
+        commands.insert("untag".to_string(), HandlerList {
+            delimiter: Some(" ".to_string()),
+            handlers: vec![CommandHandler::new(CommandArgs::Minimum(1), untag)],
+        });
+        commands.insert("cleartags".to_string(), HandlerList {
+            delimiter: None,
+            handlers: vec![CommandHandler::new(CommandArgs::Zero, cleartags)],
+        });
             /*("tag", Some(tags)) => tag(self, tree, tags),*/
             /*("untag", Some(tags)) => untag(self, tree, tags),*/
             /*("cleartags", None) => cleartags(self, tree),*/
             /*("move", None) => move_multiple(self, tree),*/
             /*("move", Some(inputs)) => move_one(self, tree, inputs),*/
         // TODO describe!
+        // TODO rename!
     }
 
     commands
@@ -87,15 +103,33 @@ fn move_one(repl: &Repl, tree: &mut IdeaTree, inputs: &str) -> Result<()> {
     tree.set_parent(id_to_move, parent_id)
 }
 
-fn tag(repl: &Repl, tree: &mut IdeaTree, tags: &str) -> Result<()> {
-    tree.add_tags(repl.selected_id, tags.split(" ").map(|str_slice| str_slice.to_string()).collect())
+fn tag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> {
+    tree.add_tags(repl.selected_id, tags)
 }
 
-fn untag(repl: &Repl, tree: &mut IdeaTree, tags: &str) -> Result<()> {
-    tree.remove_tags(repl.selected_id, tags.split(" ").map(|str_slice| str_slice.to_string()).collect())
+fn tag_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let tags: Vec<String> = Repl::prompt_for_args(vec![" tags?"])?[0].split(" ").map(|tag| tag.to_string()).collect();
+
+    // Collect all the ids to tag without applying any,
+    // because applying a hide tag to one will change the child indices of the
+    // others.
+    let mut ids_to_tag = Vec::new();
+    Repl::prompt(" tag idea ->", |select_expression| {
+        ids_to_tag.push(repl.select_from_expression(tree, select_expression)?);
+        Ok(true)
+    });
+    for id_to_tag in ids_to_tag {
+        tree.add_tags(id_to_tag, tags.clone())?;
+    }
+
+    Ok(())
 }
 
-fn cleartags(repl: &Repl, tree: &mut IdeaTree) -> Result<()> {
+fn untag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> {
+    tree.remove_tags(repl.selected_id, tags)
+}
+
+fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     tree.clear_tags(repl.selected_id)
 }
 
@@ -154,15 +188,15 @@ fn list_with_tags(repl: &Repl, tree: &IdeaTree, tags: Vec<String>) -> Result<()>
 fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     for arg in args {
         if arg != "" {
-            tree.create_idea(repl.selected_id, Some([Some(&arg), None, None, None]))?;
+            tree.create_idea(repl.selected_id, arg, None)?;
         }
     }
     Ok(())
 }
 
 fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    Repl::prompt(" ->", |name: &str| {
-        tree.create_idea(repl.selected_id, Some([Some(&name), None, None, None]))?;
+    Repl::prompt(" new idea ->", |name: &str| {
+        tree.create_idea(repl.selected_id, name.to_string(), None)?;
         Ok(true)
     });
 

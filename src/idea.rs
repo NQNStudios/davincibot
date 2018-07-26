@@ -46,10 +46,9 @@ impl IdeaTree {
         if let Err(_) = tree.get_idea(1) {
             tree.create_root_idea()?;
             /*println!("Root idea: {:?}", tree.get_idea(1));*/
-            tree.create_idea(1, Some([
-                                     Some(&".ignore"),
+            tree.create_idea(1, ".ignore".to_string(), Some([
                                      Some(&"The tags applied to this Idea will be hidden when listing children of this Idea's parent or any of its children that don't have their own .ignore child."),
-                                     Some(&serde_json::to_string(&vec![&"done", &"hidden", &"archived", &"paused"])?),
+                                     Some(&serde_json::to_string(&vec![&"done", &"hidden", &"archived", &"paused"])?.as_str()),
                                      None,
             ]))?;
             /*println!("Root idea after adding child: {:?}", tree.get_idea(1));*/
@@ -75,16 +74,30 @@ impl IdeaTree {
         Ok(())
     }
 
+    pub fn error_on_duplicate_child(&self, parent_id: i64, name: String) -> Result<()> {
+        // Check for a duplicate-named children.
+        let child_ids = self.get_child_ids(parent_id, true)?;
+        let child_names: Vec<String> = child_ids.into_iter().map(|id| self.get_name(id).expect("A child id was listed for an Idea that doesn't exist!")).collect();
+        if child_names.contains(&name) {
+            return Err(Error::DaVinci(format!("Idea #{} already has a child named '{}'", parent_id, name)));
+        }
+
+        Ok(())
+    }
+
     // TODO need to validate the names of ideas being created, or renamed
     // Names should not be able to
     // contain:  "->",
     // start with: "exit", "/", "^", "@", or a digit
     // or have leading/trailing whitespace
-    pub fn create_idea(&mut self, parent_id: i64, args: Option<[Option<&ToSql>; 4]>) -> Result<i64> {
-        {
+    pub fn create_idea(&mut self, parent_id: i64, name: String, args: Option<[Option<&ToSql>; 3]>) -> Result<i64> {
+        self.error_on_duplicate_child(parent_id, name.clone())?;
+
+        let new_id = {
+
             let mut statement = self.conn.prepare_cached("INSERT INTO ideas (name, description, tags, child_ids, parent_id) VALUES (?, ?, ?, ?, ?)")?; 
             let default_args: [&ToSql; 5] = [
-                &"", // Name
+                &name, // Name
                 &"", // Description
                 &"[]", // Tags
                 &"[]", // Child IDS
@@ -93,9 +106,10 @@ impl IdeaTree {
 
             // TODO document how to create an Idea with preset field values
             // by passing a ToSql array.
-            let mut creation_args = Vec::new();
+            let mut creation_args: Vec<&ToSql> = Vec::new();
             
             if let Some(user_args) = args {
+                creation_args.push(&name);
                 creation_args.extend(
                     user_args.into_iter().enumerate().map(|arg| match arg {
                         (_, Some(arg)) => arg.clone(),
@@ -109,8 +123,8 @@ impl IdeaTree {
 
 
             statement.execute(&creation_args)?;
-        }
-        let new_id = self.conn.last_insert_rowid();
+            self.conn.last_insert_rowid()
+        };
 
         self.set_parent(new_id, parent_id)?;
         Ok(new_id)
@@ -118,6 +132,8 @@ impl IdeaTree {
 
 
     fn add_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
+        self.error_on_duplicate_child(parent_id, self.get_name(child_id)?)?;
+
         let mut child_ids = self.get_child_ids(parent_id, true)?;
         child_ids.push(child_id);
 
@@ -162,11 +178,21 @@ impl IdeaTree {
     }
 
     pub fn set_parent(&mut self, child_id: i64, parent_id: i64) -> Result<()> {
-        // If the child idea already has a parent, remove it from the parent's list
-        if let Some(old_parent_id) = self.get_parent_id(child_id)? {
+        if child_id == 1 {
+            return Err(Error::DaVinci("Cannot move the Root idea.".to_string()));
+        }
+
+        // Get the child's old parent so we can sever that bond later
+        let old_parent_id = self.get_parent_id(child_id)?;
+
+        // Attempt to add the child to the new parent FIRST, because this may
+        // fail if its name is a duplicate
+        self.add_child(parent_id, child_id)?;
+
+        if let Some(old_parent_id) = old_parent_id {
+            // Finally, sever the old parent-child relationship
             self.remove_child(old_parent_id, child_id)?;
         }
-        self.add_child(parent_id, child_id)?;
         Ok(())
     }
 
