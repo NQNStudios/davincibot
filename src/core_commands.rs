@@ -75,6 +75,10 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
         });
         // TODO describe!
         // TODO rename!
+        // TODO add n ideas
+        // TODO print can print a progress bar!
+        // Progress bar will have to exclude Ideas marked archived/paused/etc.
+        // but not done. Progress = done / done + shown
     }
 
     commands
