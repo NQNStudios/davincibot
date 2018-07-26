@@ -57,10 +57,13 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
         commands.insert("untag".to_string(), HandlerList {
             delimiter: Some(" ".to_string()),
             handlers: vec![CommandHandler::new(CommandArgs::Minimum(1), untag)],
+            // TODO untag multiple?
         });
         commands.insert("cleartags".to_string(), HandlerList {
             delimiter: None,
             handlers: vec![CommandHandler::new(CommandArgs::Zero, cleartags)],
+            // TODO cleartags multiple? (although, cleartags already takes zero
+            // arguments so the disambiguation would be weird)
         });
             /*("tag", Some(tags)) => tag(self, tree, tags),*/
             /*("untag", Some(tags)) => untag(self, tree, tags),*/
