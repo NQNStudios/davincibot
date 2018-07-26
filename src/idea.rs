@@ -92,6 +92,9 @@ impl IdeaTree {
     // or have leading/trailing whitespace
     pub fn create_idea(&mut self, parent_id: i64, name: String, args: Option<[Option<&ToSql>; 3]>) -> Result<i64> {
         self.error_on_duplicate_child(parent_id, name.clone())?;
+        if name.trim().len() == 0 {
+            return Err(Error::DaVinci("Can't make an Idea without a name".to_string()));
+        }
 
         let new_id = {
 

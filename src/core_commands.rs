@@ -65,11 +65,14 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
             // TODO cleartags multiple? (although, cleartags already takes zero
             // arguments so the disambiguation would be weird)
         });
-            /*("tag", Some(tags)) => tag(self, tree, tags),*/
-            /*("untag", Some(tags)) => untag(self, tree, tags),*/
-            /*("cleartags", None) => cleartags(self, tree),*/
-            /*("move", None) => move_multiple(self, tree),*/
-            /*("move", Some(inputs)) => move_one(self, tree, inputs),*/
+        commands.insert("move".to_string(), HandlerList {
+            delimiter: Some("->".to_string()),
+            handlers: vec![
+                CommandHandler::new(CommandArgs::Amount(2), move_both_args),
+                CommandHandler::new(CommandArgs::Amount(1), move_one_arg),
+                CommandHandler::new(CommandArgs::Zero, move_multiple),
+            ],
+        });
         // TODO describe!
         // TODO rename!
     }
@@ -85,7 +88,7 @@ fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()>
 
 fn move_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let parent_id = repl.select_from_expression(tree, &Repl::prompt_for_args(vec![" destination?"])?[0])?;
-    Repl::prompt(" idea to move: ", |select_expression| {
+    Repl::prompt(" idea to move:", |select_expression| {
         let id_to_move = repl.select_from_expression(tree, select_expression)?;
         tree.set_parent(id_to_move, parent_id)?;
         Ok(true)
@@ -94,14 +97,17 @@ fn move_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Res
     Ok(())
 }
 
-fn move_one(repl: &Repl, tree: &mut IdeaTree, inputs: &str) -> Result<()> {
-    let parts: Vec<&str> = inputs.split("->").map(|part| part.trim()).collect();
-    if parts.len() != 2 {
-        return Err(Error::DaVinci("'move' can either be called with no arguments, or with 2 separated by '->'".to_string()));
-    }
+fn move_one_arg(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let id_to_move = repl.select_from_expression(tree, args[0].as_str())?;
+    let further_arg = Repl::prompt_for_args(vec![" desination?"])?;
+    let parent_selector = further_arg[0].as_str();
+    let parent_id = repl.select_from_expression(tree, parent_selector)?;
+    tree.set_parent(id_to_move, parent_id)
+}
 
-    let id_to_move = repl.select_from_expression(tree, parts[0])?;
-    let parent_id = repl.select_from_expression(tree, parts[1])?;
+fn move_both_args(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let id_to_move = repl.select_from_expression(tree, args[0].as_str())?;
+    let parent_id = repl.select_from_expression(tree, args[1].as_str())?;
 
     tree.set_parent(id_to_move, parent_id)
 }
