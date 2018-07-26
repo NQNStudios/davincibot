@@ -7,9 +7,11 @@ extern crate serde_json;
 mod error;
 mod idea;
 mod repl;
+mod core_commands;
 
 use idea::*;
 use repl::*;
+use core_commands::core_commands;
 
 fn main() {
     let home_path = env::home_dir().unwrap_or(PathBuf::new());
@@ -19,7 +21,7 @@ fn main() {
     println!("Loading Da Vinci file: {}", filename);
     let mut tree = IdeaTree::open(filename).expect("Failed to create Da Vinci tree."); 
 
-    Repl::new().run(&mut tree);
+    Repl::new().run(&mut tree, core_commands());
 }
 
 // TODO Interrupt ^C signal and treat it as "exit" instead of closing program
