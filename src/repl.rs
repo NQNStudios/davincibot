@@ -174,7 +174,10 @@ impl Repl {
                         println!("'{}' command returned an error: {:?}", command, e);
                     }
                 },
-                None => println!("Can't call '{}' command with {} arguments", command, args.len()),
+                None => match &self.commands[command].delimiter {
+                    Some(delimiter) => println!("Can't call '{}' command with {} arguments", command, args.len()),
+                    None => println!("The '{}' command does not take arguments", command),
+                }
             }
         }
         else {

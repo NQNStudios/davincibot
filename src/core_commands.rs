@@ -95,6 +95,7 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
         // TODO print can print a progress bar!
         // Progress bar will have to exclude Ideas marked archived/paused/etc.
         // but not done. Progress = done / done + shown
+        // TODO pipe accidental git commands back to the shell, lol?
     }
 
     commands
