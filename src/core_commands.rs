@@ -77,7 +77,10 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
         });
         commands.insert("describe".to_string(), HandlerList {
             delimiter: None,
-            handlers: vec![CommandHandler::new(CommandArgs::Zero, describe)],
+            handlers: vec![
+                // TODO describe [select_expression]
+                CommandHandler::new(CommandArgs::Zero, describe)
+            ],
         });
         commands.insert("rename".to_string(), HandlerList {
             delimiter: Some("->".to_string()),
