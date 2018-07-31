@@ -4,6 +4,7 @@ authors = [
     "Sid Shanker <sshanker220@gmail.com>",
     "Omayeli Arenyeka <aomayeli@gmail.com>",
     "Kevin Martin <kevinmartinucr@gmail.com>",
+    "Eliana Abraham <elabraha@umich.edu>",
 ]
 exclude = [
     "deprecated/*"
@@ -11,7 +12,7 @@ exclude = [
 name = "davincibot"
 description="A command-line utility for managing absurdly eclectic interests."
 license="GPL-3.0"
-version = "0.0.3"
+version = "0.0.4"
 [dependencies]
 serde = "1.0.69"
 serde_derive = "1.0.69"
