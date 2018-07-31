@@ -78,8 +78,8 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
         commands.insert("describe".to_string(), HandlerList {
             delimiter: None,
             handlers: vec![
-                // TODO describe [select_expression]
-                CommandHandler::new(CommandArgs::Zero, describe)
+                CommandHandler::new(CommandArgs::Amount(1), describe),
+                CommandHandler::new(CommandArgs::Zero, describe),
             ],
         });
         commands.insert("rename".to_string(), HandlerList {
@@ -102,6 +102,7 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
 
 fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     repl.selected_id = repl.select_from_expression(tree, &args[0])?;
+    print(repl, tree, vec![])?;
 
     Ok(())
 }
@@ -223,7 +224,7 @@ fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
     Repl::prompt(" new idea ->", |name: &str| {
         tree.create_idea(repl.selected_id, name.to_string(), None)?;
         Ok(true)
@@ -233,13 +234,17 @@ fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Resu
 }
 
 fn describe(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    let existing_description = tree.get_description(repl.selected_id)?;
+    let target_id = match args.into_iter().next() {
+        Some(expression) => repl.select_from_expression(tree, &expression)?,
+        None => repl.selected_id,
+    };
+    let existing_description = tree.get_description(target_id)?;
 
     let new_description = get_input(&existing_description)?;
 
     if new_description != existing_description {
         println!("Updating description.");
-        tree.set_description(repl.selected_id, &new_description)?
+        tree.set_description(target_id, &new_description)?
     }
     Ok(())
 }
@@ -253,13 +258,13 @@ fn rename_any(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result
 }
 
 fn rename_selected(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    let mut new_name = args.into_iter().next();
-    if new_name == None {
-        new_name = Repl::prompt_for_args(vec!["new name?"])?.into_iter().next();
+    let new_name = match args.into_iter().next() {
+        Some(new_name) => new_name,
+        None => match Repl::prompt_for_args(vec!["new name?"])?.into_iter().next() {
+            Some(new_name) => new_name,
+            None => return Err(Error::DaVinci("Couldnn't get a new name for the idea".to_string())),
+        }
     };
 
-    match new_name {
-        Some(new_name) => tree.set_name(repl.selected_id, &new_name),
-        None => Err(Error::DaVinci("Couldnn't get a new name for the idea".to_string())),
-    }
+    tree.set_name(repl.selected_id, &new_name)
 }

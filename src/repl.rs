@@ -1,9 +1,13 @@
 use std::io::Write;
 use std::io;
 use std::collections::HashMap;
+use std::borrow::BorrowMut;
+use std::rc::Rc;
 
 use idea::IdeaTree;
 use error::{Result, Error};
+
+use core_commands::core_commands;
 
 pub enum CommandArgs {
     Zero,
@@ -30,13 +34,13 @@ impl CommandArgs {
 
 type CommandImplementation = Fn(&mut Repl, &mut IdeaTree, Vec<String>) -> Result<()>;
 
-pub struct CommandHandler(CommandArgs, Box<CommandImplementation>);
+pub struct CommandHandler(CommandArgs, Rc<CommandImplementation>);
 
 impl CommandHandler {
     pub fn new<C>(args: CommandArgs, implementation: C) -> Self
         where C: 'static + Fn(&mut Repl, &mut IdeaTree, Vec<String>) -> Result<()>
     {
-        CommandHandler (args, Box::new(implementation))
+        CommandHandler (args, Rc::new(implementation))
     }
 }
 
@@ -49,12 +53,29 @@ pub struct HandlerList {
 
 pub struct Repl {
     pub selected_id: i64,
+    commands: HashMap<String, HandlerList>,
 }
 
 impl Repl {
     pub fn new() -> Repl {
-        Repl { 
+        let mut repl = Repl { 
             selected_id: 1,
+            commands: HashMap::new(),
+        };
+
+        repl.register_commands(core_commands());
+        repl
+    }
+
+    // add all the commands to this Repl's command map, and throw an
+    // error if any of them are a duplicate command name
+    pub fn register_commands(&mut self, commands: HashMap<String, HandlerList>) {
+        for (command, handlerList) in commands {
+            if self.commands.contains_key(&command) {
+                println!("Error! Cannot add duplicate command with name '{}'", command);
+            } else {
+                self.commands.insert(command, handlerList);
+            }
         }
     }
 
@@ -105,64 +126,60 @@ impl Repl {
     }
 
 
-    pub fn run(&mut self, tree: &mut IdeaTree, commands: HashMap<String, HandlerList>) {
-    
-        Repl::prompt("$", |input_line| {
-            // An empty query is a no-op
-            if input_line.len() == 0 {
-                return Ok(true)
-            }
+    pub fn run(&mut self, tree: &mut IdeaTree) {
+        self.run_command(tree, "select 1".to_string());
+        Repl::prompt("$", |input_line| { self.run_command(tree, input_line.to_string()); Ok(true) });
+    }
 
-            // The first token of every input line should be a valid command name
-            let mut parts = input_line.splitn(2, " ");
-            let command = parts.next().unwrap();
+    pub fn run_command(&mut self, tree: &mut IdeaTree, input_line: String) {
+        // An empty query is a no-op
+        if input_line.len() == 0 {
+            return;
+        }
 
-            if commands.contains_key(command) {
+        // The first token of every input line should be a valid command name
+        let mut parts = input_line.splitn(2, " ");
+        let command = parts.next().unwrap();
 
-                let handler_list = &commands[command];
-                let args: Vec<String> = {
-                    match parts.next() {
-                        Some(inputs) => match inputs.len() {
-                            0 => Vec::new(),
-                            _ => match handler_list.delimiter {
-                                Some(ref delimiter) => inputs.split(delimiter.as_str()).map(|arg| arg.trim().to_string()).collect(),
-                                None => vec![inputs.to_string()]
-                            }
-                        },
-                        None => Vec::new()
-                    }
-                };
+        if self.commands.contains_key(command) {
 
-                // Check which of this command's handlers matches the number of
-                // given inputs
-                let mut handler = None;
-                {
-                    let handler_list = &commands[command];
-                    for possible_handler in &handler_list.handlers {
-                        if possible_handler.0.matches((&args).len()) {
-                            handler = Some(&possible_handler.1);
-                            break;
-                        }
-                    }
-                }
+            let args;
+            let mut handler: Option<Rc<CommandImplementation>> = None;
 
-                match handler {
-                    Some(handler) => {
-                        if let Err(e) = handler(self, tree, args) {
-                            println!("'{}' command returned an error: {:?}", command, e);
+            {
+                let handler_list = &self.commands[command];
+                args = match parts.next() {
+                    Some(inputs) => match inputs.len() {
+                        0 => Vec::new(),
+                        _ => match handler_list.delimiter {
+                            Some(ref delimiter) => inputs.split(delimiter.as_str()).map(|arg| arg.trim().to_string()).collect(),
+                            None => vec![inputs.to_string()]
                         }
                     },
-                    None => println!("Can't call '{}' command with {} arguments", command, args.len()),
+                    None => Vec::new()
+                };
+                // Check which of this command's handlers matches the number of
+                // given inputs
+                for possible_handler in &handler_list.handlers {
+                    if possible_handler.0.matches((&args).len()) {
+                        handler = Some(Rc::clone(&possible_handler.1));
+                        break;
+                    }
                 }
             }
-            else {
-                println!("There is no Da Vinci Bot command named {}", command);
 
-                return Ok(true);
+            match handler {
+                Some(handler) => {
+                    if let Err(e) = (*handler)(self, tree, args) {
+                        println!("'{}' command returned an error: {:?}", command, e);
+                    }
+                },
+                None => println!("Can't call '{}' command with {} arguments", command, args.len()),
             }
-
-            Ok(true)
-        });
+        }
+        else {
+            println!("There is no Da Vinci Bot command named {}", command);
+        }
     }
 
     fn select_from_expression_internal(selected_id: i64, tree: &IdeaTree, expression: &str) -> Result<i64> {
