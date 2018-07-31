@@ -204,6 +204,17 @@ impl IdeaTree {
         Ok(name)
     }
 
+    pub fn get_name_with_tags(&self, id: i64) -> Result<String> {
+        let mut buffer = self.get_name(id)?;
+        let tags = self.get_tags(id)?;
+
+        for tag in tags {
+            buffer += &format!(" [{}]", tag);
+        }
+
+        Ok(buffer)
+    }
+
     pub fn set_name(&self, id: i64, name: &String) -> Result<()> {
         let mut statement = self.conn.prepare_cached("UPDATE ideas SET name=? WHERE id=?")?;
 

@@ -11,7 +11,7 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
     {
         commands.insert("print".to_string(), HandlerList {
             delimiter: None,
-            handlers: vec![CommandHandler::new(CommandArgs::Zero, print)],
+            handlers: vec![CommandHandler::new(CommandArgs::Maximum(1), print)],
         });
         commands.insert("listall".to_string(), HandlerList {
             delimiter: None,
@@ -103,7 +103,9 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
 
 fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     repl.selected_id = repl.select_from_expression(tree, &args[0])?;
-    print(repl, tree, vec![])?;
+    // When selecting a new Idea, automatically print it (shortening its
+    // description to a reasonable length)
+    print(repl, tree, vec!["50".to_string()])?;
 
     Ok(())
 }
@@ -165,7 +167,9 @@ fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<
 }
 
 // TODO printing ideas should be prettier
-fn print(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
+// TODO it should also be handled by implementing Display for the Idea type,
+// rather than put the print logic in this file
+fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let idea = tree.get_idea(repl.selected_id)?;
 
     println!("#{}: {}", idea.id, idea.name);
@@ -179,7 +183,19 @@ fn print(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()>
         println!();
     }
     println!("---");
-    println!("{}", idea.description);
+
+    let description_limit = match args.into_iter().next() {
+        Some(limit) => str::parse::<usize>(&limit)?,
+        None => idea.description.len(),
+    };
+
+    let description_to_print = if description_limit < idea.description.len() {
+        format!("{}...", &idea.description[0..description_limit])
+    } else {
+        idea.description
+    };
+
+    println!("{}", description_to_print);
     println!("{} children", idea.child_ids.len()); // TODO print how many are hidden
 
     Ok(())
@@ -191,9 +207,9 @@ fn list(repl: &Repl, tree: &IdeaTree, show_all: bool) -> Result<()> {
     let all_child_ids = tree.get_child_ids(repl.selected_id, true)?;
 
     for (child_idx, id) in shown_child_ids.iter().enumerate() {
-        let child_name = tree.get_name(*id)?;
+        let child= tree.get_name_with_tags(*id)?;
 
-        println!("{}. {}", child_idx+1, child_name);
+        println!("{}. {}", child_idx+1, child);
     }
 
     if show_all {
@@ -201,15 +217,17 @@ fn list(repl: &Repl, tree: &IdeaTree, show_all: bool) -> Result<()> {
         hidden_child_ids.retain(|id| !shown_child_ids.contains(id));
 
         for id in hidden_child_ids {
-            let child_name = tree.get_name(id)?;
+            let child = tree.get_name_with_tags(id)?;
 
-            println!("Hidden: {}", child_name);
+            println!("Hidden: {}", child);
         }
     }
 
     Ok(())
 }
 
+// TODO this is now ambiguous because get_name_with_tags() is already what's 
+// printed from `list`
 fn list_with_tags(repl: &Repl, tree: &IdeaTree, tags: Vec<String>) -> Result<()> {
     // TODO only list children that have the right tags (including hidden ones)
 

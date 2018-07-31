@@ -1,7 +1,6 @@
 use std::io::Write;
 use std::io;
 use std::collections::HashMap;
-use std::borrow::BorrowMut;
 use std::rc::Rc;
 
 use idea::IdeaTree;
@@ -70,11 +69,11 @@ impl Repl {
     // add all the commands to this Repl's command map, and throw an
     // error if any of them are a duplicate command name
     pub fn register_commands(&mut self, commands: HashMap<String, HandlerList>) {
-        for (command, handlerList) in commands {
+        for (command, handler_list) in commands {
             if self.commands.contains_key(&command) {
                 println!("Error! Cannot add duplicate command with name '{}'", command);
             } else {
-                self.commands.insert(command, handlerList);
+                self.commands.insert(command, handler_list);
             }
         }
     }
@@ -127,7 +126,7 @@ impl Repl {
 
 
     pub fn run(&mut self, tree: &mut IdeaTree) {
-        self.run_command(tree, "select 1".to_string());
+        self.run_command(tree, "select @".to_string());
         Repl::prompt("$", |input_line| { self.run_command(tree, input_line.to_string()); Ok(true) });
     }
 
