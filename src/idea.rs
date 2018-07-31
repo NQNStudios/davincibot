@@ -209,6 +209,13 @@ impl IdeaTree {
         Ok(name)
     }
 
+    pub fn set_description(&mut self, id: i64, description: String) -> Result<()> {
+        let mut statement = self.conn.prepare_cached("UPDATE ideas SET description=? WHERE id=?")?;
+
+        statement.execute(&[&description, &id])?;
+        Ok(())
+    }
+
     pub fn get_tags(&self, id: i64) -> Result<Vec<String>> {
         let tags_json: String = self.conn.query_row("SELECT tags FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
         let tags: Vec<String> = serde_json::from_str(tags_json.as_str())?;

@@ -3,6 +3,8 @@ use error::*;
 use idea::IdeaTree;
 use std::collections::HashMap;
 
+use edit_rs::get_input;
+
 pub fn core_commands() -> HashMap<String, HandlerList> {
     let mut commands = HashMap::new();
 
@@ -73,7 +75,11 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
                 CommandHandler::new(CommandArgs::Zero, move_multiple),
             ],
         });
-        // TODO describe!
+        commands.insert("describe".to_string(), HandlerList {
+            delimiter: None,
+            handlers: vec![CommandHandler::new(CommandArgs::Zero, describe)],
+        });
+        // TODO reordering children
         // TODO rename!
         // TODO add n ideas
         // TODO print can print a progress bar!
@@ -213,5 +219,17 @@ fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Resu
         Ok(true)
     });
 
+    Ok(())
+}
+
+fn describe(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let existing_description = tree.get_description(repl.selected_id)?;
+
+    let new_description = get_input(&existing_description)?;
+
+    if new_description != existing_description {
+        println!("Updating description.");
+        tree.set_description(repl.selected_id, new_description)?
+    }
     Ok(())
 }

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 extern crate rusqlite;
 extern crate serde_json;
+extern crate edit_rs;
 
 mod error;
 mod idea;

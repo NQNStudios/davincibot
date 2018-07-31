@@ -1,4 +1,5 @@
 .IDEA_DESCRIPTION
+.EDITRS_EDITOR_INPUT
 
 .*.json
 dist/
