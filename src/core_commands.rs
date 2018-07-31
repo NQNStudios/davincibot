@@ -79,8 +79,15 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
             delimiter: None,
             handlers: vec![CommandHandler::new(CommandArgs::Zero, describe)],
         });
+        commands.insert("rename".to_string(), HandlerList {
+            delimiter: Some("->".to_string()),
+            handlers: vec![
+                CommandHandler::new(CommandArgs::Amount(2), rename_any),
+                CommandHandler::new(CommandArgs::Amount(1), rename_selected),
+                CommandHandler::new(CommandArgs::Amount(0), rename_selected),
+            ],
+        });
         // TODO reordering children
-        // TODO rename!
         // TODO add n ideas
         // TODO print can print a progress bar!
         // Progress bar will have to exclude Ideas marked archived/paused/etc.
@@ -97,9 +104,9 @@ fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()>
 }
 
 fn move_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    let parent_id = repl.select_from_expression(tree, &Repl::prompt_for_args(vec![" destination?"])?[0])?;
+    let parent_id = repl.select_from_expression(tree, &Repl::prompt_for_args(vec!["destination?"])?[0])?;
     Repl::prompt(" idea to move:", |select_expression| {
-        let id_to_move = repl.select_from_expression(tree, select_expression)?;
+        let id_to_move = repl.select_from_expression(tree, &select_expression)?;
         tree.set_parent(id_to_move, parent_id)?;
         Ok(true)
     });
@@ -109,7 +116,7 @@ fn move_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Res
 
 fn move_one_arg(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let id_to_move = repl.select_from_expression(tree, args[0].as_str())?;
-    let further_arg = Repl::prompt_for_args(vec![" desination?"])?;
+    let further_arg = Repl::prompt_for_args(vec!["desination?"])?;
     let parent_selector = further_arg[0].as_str();
     let parent_id = repl.select_from_expression(tree, parent_selector)?;
     tree.set_parent(id_to_move, parent_id)
@@ -127,7 +134,7 @@ fn tag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> {
 }
 
 fn tag_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    let tags: Vec<String> = Repl::prompt_for_args(vec![" tags?"])?[0].split(" ").map(|tag| tag.to_string()).collect();
+    let tags: Vec<String> = Repl::prompt_for_args(vec!["tags?"])?[0].split(" ").map(|tag| tag.to_string()).collect();
 
     // Collect all the ids to tag without applying any,
     // because applying a hide tag to one will change the child indices of the
@@ -229,7 +236,27 @@ fn describe(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<(
 
     if new_description != existing_description {
         println!("Updating description.");
-        tree.set_description(repl.selected_id, new_description)?
+        tree.set_description(repl.selected_id, &new_description)?
     }
     Ok(())
+}
+
+fn rename_any(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let select_expression = &args[0];
+    let new_name = &args[1];
+    let id_to_rename = repl.select_from_expression(tree, &select_expression)?;
+
+    tree.set_name(id_to_rename, new_name)
+}
+
+fn rename_selected(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let mut new_name = args.into_iter().next();
+    if new_name == None {
+        new_name = Repl::prompt_for_args(vec!["new name?"])?.into_iter().next();
+    };
+
+    match new_name {
+        Some(new_name) => tree.set_name(repl.selected_id, &new_name),
+        None => Err(Error::DaVinci("Couldnn't get a new name for the idea".to_string())),
+    }
 }

@@ -91,7 +91,7 @@ impl Repl {
     pub fn prompt_for_args(arg_names: Vec<&str>) -> Result<Vec<String>> {
         let mut arg_values = Vec::new();
         for arg_name in &arg_names {
-            Repl::prompt(&format!("{}", arg_name), |arg_value| {
+            Repl::prompt(&format!(" {}", arg_name), |arg_value| {
                 arg_values.push(arg_value.to_string());
                 Ok(false)
             });

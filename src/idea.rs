@@ -204,15 +204,22 @@ impl IdeaTree {
         Ok(name)
     }
 
+    pub fn set_name(&self, id: i64, name: &String) -> Result<()> {
+        let mut statement = self.conn.prepare_cached("UPDATE ideas SET name=? WHERE id=?")?;
+
+        statement.execute(&[name, &id])?;
+        Ok(())
+    }
+
     pub fn get_description(&self, id: i64) -> Result<String> {
         let name: String = self.conn.query_row("SELECT description FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
         Ok(name)
     }
 
-    pub fn set_description(&mut self, id: i64, description: String) -> Result<()> {
+    pub fn set_description(&mut self, id: i64, description: &String) -> Result<()> {
         let mut statement = self.conn.prepare_cached("UPDATE ideas SET description=? WHERE id=?")?;
 
-        statement.execute(&[&description, &id])?;
+        statement.execute(&[description, &id])?;
         Ok(())
     }
 
