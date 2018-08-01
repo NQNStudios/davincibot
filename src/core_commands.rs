@@ -210,10 +210,10 @@ fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> 
 
     // do special printing using registered Idea type printers
     for (idea_type, idea_printer) in &repl.printers {
-        let children_inherit_default = idea_printer.children_inherit_default;
+        let always_inherited = idea_printer.always_inherited;
         let printer_implementation: &PrinterImplementation = idea_printer.implementation.borrow();
 
-        if tree.has_tag(repl.selected_id, &idea_type, children_inherit_default, Some("type".to_string()))? {
+        if tree.get_tags(repl.selected_id, always_inherited)?.contains(&idea_type) {
             (*printer_implementation)(&idea, tree)?;
         }
     }

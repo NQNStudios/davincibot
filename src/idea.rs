@@ -27,8 +27,15 @@ pub struct IdeaTree {
 }
 
 impl IdeaTree {
+    pub fn open_in_memory() -> Result<IdeaTree> { 
+        IdeaTree::create(Connection::open_in_memory()?)
+    }
+
     pub fn open<P: AsRef<Path>>(path: P) -> Result<IdeaTree> {
-        let conn = Connection::open(path)?;
+        IdeaTree::create(Connection::open(path)?)
+    }
+
+    fn create(conn: Connection) -> Result<IdeaTree> {
         let mut tree = IdeaTree { conn };
 
         // Create the Idea table in the database if one doesn't exist. 
@@ -206,7 +213,7 @@ impl IdeaTree {
 
     pub fn get_name_with_tags(&self, id: i64) -> Result<String> {
         let mut buffer = self.get_name(id)?;
-        let tags = self.get_tags(id)?;
+        let tags = self.get_tags(id, false)?;
 
         for tag in tags {
             buffer += &format!(" [{}]", tag);
@@ -234,9 +241,20 @@ impl IdeaTree {
         Ok(())
     }
 
-    pub fn get_tags(&self, id: i64) -> Result<Vec<String>> {
+    pub fn get_tags(&self, id: i64, inherit_tags: bool) -> Result<Vec<String>> {
         let tags_json: String = self.conn.query_row("SELECT tags FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
-        let tags: Vec<String> = serde_json::from_str(tags_json.as_str())?;
+        let mut tags: Vec<String> = serde_json::from_str(tags_json.as_str())?;
+
+        if inherit_tags {
+            if let Some(parent_id) = self.get_parent_id(id)? {
+                let parent_tags = self.get_tags(parent_id, true)?;
+
+                tags.extend(parent_tags);
+                tags.sort();
+                tags.dedup();
+            }
+        }
+
         Ok(tags)
     }
 
@@ -252,13 +270,13 @@ impl IdeaTree {
     }
 
     pub fn remove_tags(&mut self, id: i64, tags: Vec<String>) -> Result<()> {
-        let mut new_tags = self.get_tags(id)?;
+        let mut new_tags = self.get_tags(id, false)?;
         new_tags.retain(|tag| !tags.contains(tag));
         self.set_tags(id, new_tags)
     }
 
     pub fn add_tags(&mut self, id: i64, tags: Vec<String>) -> Result<()> {
-        let mut new_tags = self.get_tags(id)?;
+        let mut new_tags = self.get_tags(id, false)?;
         new_tags.extend(tags);
 
         self.set_tags(id, new_tags)
@@ -271,28 +289,6 @@ impl IdeaTree {
             Value::Integer(id) => Ok(Some(id)),
             _ => panic!("The parent_id row of an Idea in the database is neither Null nor an ID!")
         }
-    }
-
-    pub fn has_tag(&self, id: i64, tag: &String, allow_inheritance: bool, include_meta_tags: Option<String>) -> Result<bool> {
-        if self.get_tags(id)?.contains(tag) {
-            return Ok(true);
-        }
-
-        if allow_inheritance {
-            if let Some(parent_id) = self.get_parent_id(id)? {
-                if self.has_tag(parent_id, tag, allow_inheritance, None)? {
-                    return Ok(true)
-                }
-            }
-        }
-
-        if let Some(include_meta_tags) = include_meta_tags {
-            if self.get_meta_tags(id, &include_meta_tags)?.contains(tag) {
-                return Ok(true)
-            }
-       }
-
-        Ok(false)
     }
 
     pub fn get_meta_tags(&self, id: i64, meta_type: &str) -> Result<Vec<String>> {

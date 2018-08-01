@@ -36,16 +36,16 @@ impl CommandArgs {
 pub type PrinterImplementation = Fn(&Idea, &IdeaTree) -> Result<()>;
 
 pub struct IdeaPrinter {
-    pub children_inherit_default: bool, 
+    pub always_inherited: bool, 
     pub implementation: Box<PrinterImplementation>,
 }
 
 impl IdeaPrinter {
-    pub fn new<C>(children_inherit_default: bool, implementation: C) -> Self
+    pub fn new<C>(always_inherited: bool, implementation: C) -> Self
         where C: 'static + Fn(&Idea, &IdeaTree) -> Result<()>
     {
         IdeaPrinter {
-            children_inherit_default,
+            always_inherited,
             implementation: Box::new(implementation),
         }
     }
