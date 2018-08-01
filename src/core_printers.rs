@@ -6,6 +6,8 @@ use idea::{Idea, IdeaTree};
 use error::{Result, Error};
 use conv::prelude::*;
 
+const PARTS: usize = 30;
+
 pub fn core_printers() -> HashMap<String, IdeaPrinter> {
     let mut printers = HashMap::new();
 
@@ -42,19 +44,19 @@ fn progress(todo_idea: &Idea, tree: &IdeaTree) -> Result<f64> {
 }
 
 fn print_progress_bar(todo_idea: &Idea, tree: &IdeaTree) -> Result<()> {
-    // [======>       ]
+    // [======>                       ]
     let progress = progress(todo_idea, tree)?;
 
     print!("[");
 
     let mut bar = String::new();
 
-    let current_tenth = (progress * 10f64).ceil() as i8;
-    for tenth in 1..10 {
-        if tenth < current_tenth {
+    let current_part = (progress * PARTS as f64).floor() as usize;
+    for part in 0..PARTS {
+        if part < current_part {
             bar.push('=');
         }
-        else if tenth == current_tenth {
+        else if part == current_part {
             bar.push('>');
         }
         else {
@@ -66,13 +68,15 @@ fn print_progress_bar(todo_idea: &Idea, tree: &IdeaTree) -> Result<()> {
     if progress == 1f64 {
         bar = {
             let mut bytes = bar.into_bytes();
-            bytes[9] = '=' as u8;
+            bytes[PARTS-1] = '=' as u8;
 
-            bytes[3] = 'D' as u8;
-            bytes[4] = 'O' as u8;
-            bytes[5] = 'N' as u8;
-            bytes[6] = 'E' as u8;
-            bytes[7] = '!' as u8;
+            let start = bytes.len() / 2 - 2;
+
+            bytes[start] = 'D' as u8;
+            bytes[start+1] = 'O' as u8;
+            bytes[start+2] = 'N' as u8;
+            bytes[start+3] = 'E' as u8;
+            bytes[start+4] = '!' as u8;
 
             from_utf8(&bytes)?.to_string()
         };
@@ -81,6 +85,8 @@ fn print_progress_bar(todo_idea: &Idea, tree: &IdeaTree) -> Result<()> {
     print!("{}", bar);
 
     println!("]");
+
+    // TODO print a ___/___ number
 
     Ok(())
 }
