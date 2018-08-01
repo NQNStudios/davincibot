@@ -3,10 +3,11 @@ use std::io;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use idea::IdeaTree;
+use idea::{IdeaTree, Idea};
 use error::{Result, Error};
 
 use core_commands::core_commands;
+use core_printers::core_printers;
 
 pub enum CommandArgs {
     Zero,
@@ -31,6 +32,27 @@ impl CommandArgs {
     }
 }
 
+// TODO this won't be pub after printing is moved out of core_commands.rs into repl.rs
+pub type PrinterImplementation = Fn(&Idea, &IdeaTree) -> Result<()>;
+
+pub struct IdeaPrinter {
+    pub children_inherit_default: bool, 
+    pub implementation: Box<PrinterImplementation>,
+}
+
+impl IdeaPrinter {
+    pub fn new<C>(children_inherit_default: bool, implementation: C) -> Self
+        where C: 'static + Fn(&Idea, &IdeaTree) -> Result<()>
+    {
+        IdeaPrinter {
+            children_inherit_default,
+            implementation: Box::new(implementation),
+        }
+    }
+}
+
+
+
 type CommandImplementation = Fn(&mut Repl, &mut IdeaTree, Vec<String>) -> Result<()>;
 
 pub struct CommandHandler(CommandArgs, Rc<CommandImplementation>);
@@ -46,13 +68,12 @@ impl CommandHandler {
 pub struct HandlerList {
     pub delimiter: Option<String>,
     pub handlers: Vec<CommandHandler>,
-    // TODO this might be enough information to print usage info on any
-    // malformed command
 }
 
 pub struct Repl {
     pub selected_id: i64,
     commands: HashMap<String, HandlerList>,
+    pub printers: HashMap<String, IdeaPrinter>,
 }
 
 impl Repl {
@@ -60,9 +81,11 @@ impl Repl {
         let mut repl = Repl { 
             selected_id: 1,
             commands: HashMap::new(),
+            printers: HashMap::new(),
         };
 
         repl.register_commands(core_commands());
+        repl.register_printers(core_printers());
         repl
     }
 
@@ -74,6 +97,16 @@ impl Repl {
                 println!("Error! Cannot add duplicate command with name '{}'", command);
             } else {
                 self.commands.insert(command, handler_list);
+            }
+        }
+    }
+
+    pub fn register_printers(&mut self, printers: HashMap<String, IdeaPrinter>) {
+        for (idea_type, printer) in printers {
+            if self.printers.contains_key(&idea_type) {
+                println!("Error! Cannot add duplicate printer for type '{}'", idea_type);
+            } else {
+                self.printers.insert(idea_type, printer);
             }
         }
     }
@@ -128,7 +161,11 @@ impl Repl {
     pub fn run(&mut self, tree: &mut IdeaTree) {
         self.run_command(tree, "select @".to_string());
         Repl::prompt("$", |input_line| { self.run_command(tree, input_line.to_string()); Ok(true) });
+        // TODO confirm quitting Davincibot
     }
+
+    // TODO Idea printing should be a function in this file like run_command,
+    // not defined in core_commands.rs as it is
 
     pub fn run_command(&mut self, tree: &mut IdeaTree, input_line: String) {
         // An empty query is a no-op

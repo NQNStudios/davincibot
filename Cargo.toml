@@ -21,3 +21,4 @@ clap = { version = "2.32.0", features = ["yaml"] }
 subprocess = "0.1.13"
 rusqlite = "0.13.0"
 edit-rs = "0.1.1"
+conv = "0.3.3"

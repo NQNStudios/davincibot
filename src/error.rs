@@ -10,6 +10,7 @@ pub enum Error {
     DaVinci(String),
     ParseInt(std::num::ParseIntError),
     EditRS(edit_rs::Error),
+    Utf8(std::str::Utf8Error),
 }
 
 impl From<rusqlite::Error> for Error {
@@ -33,6 +34,12 @@ impl From<std::num::ParseIntError> for Error {
 impl From<edit_rs::Error> for Error {
     fn from(e: edit_rs::Error) -> Self {
         self::Error::EditRS(e)
+    }
+}
+
+impl From<std::str::Utf8Error> for Error {
+    fn from(e: std::str::Utf8Error) -> Self {
+        self::Error::Utf8(e)
     }
 }
 

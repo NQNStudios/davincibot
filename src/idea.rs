@@ -273,6 +273,28 @@ impl IdeaTree {
         }
     }
 
+    pub fn has_tag(&self, id: i64, tag: &String, allow_inheritance: bool, include_meta_tags: Option<String>) -> Result<bool> {
+        if self.get_tags(id)?.contains(tag) {
+            return Ok(true);
+        }
+
+        if allow_inheritance {
+            if let Some(parent_id) = self.get_parent_id(id)? {
+                if self.has_tag(parent_id, tag, allow_inheritance, None)? {
+                    return Ok(true)
+                }
+            }
+        }
+
+        if let Some(include_meta_tags) = include_meta_tags {
+            if self.get_meta_tags(id, &include_meta_tags)?.contains(tag) {
+                return Ok(true)
+            }
+       }
+
+        Ok(false)
+    }
+
     pub fn get_meta_tags(&self, id: i64, meta_type: &str) -> Result<Vec<String>> {
         let idea = self.get_idea(id)?;
 
@@ -288,7 +310,7 @@ impl IdeaTree {
 
         // If not, check if the parent has a .{meta_type} child and return those
         if let Some(parent_id) = idea.parent_id {
-            return self.get_meta_tags(parent_id, meta_idea_name);
+            return self.get_meta_tags(parent_id, &meta_idea_name);
         }
 
         Ok(Vec::new())

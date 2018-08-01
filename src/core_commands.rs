@@ -2,6 +2,7 @@ use repl::*;
 use error::*;
 use idea::IdeaTree;
 use std::collections::HashMap;
+use std::borrow::Borrow;
 
 use edit_rs::get_input;
 
@@ -200,14 +201,22 @@ fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> 
     let description_to_print = if description_limit < idea.description.len() {
         format!("{}...", &idea.description[0..description_limit])
     } else {
-        idea.description
+        // TODO this clone() shouldn't be necessary
+        idea.description.clone()
     };
 
     println!("{}", description_to_print);
     println!("{} children", idea.child_ids.len()); // TODO print how many are hidden
 
-    // TODO do special printing using registered Idea type printers
+    // do special printing using registered Idea type printers
+    for (idea_type, idea_printer) in &repl.printers {
+        let children_inherit_default = idea_printer.children_inherit_default;
+        let printer_implementation: &PrinterImplementation = idea_printer.implementation.borrow();
 
+        if tree.has_tag(repl.selected_id, &idea_type, children_inherit_default, Some("type".to_string()))? {
+            (*printer_implementation)(&idea, tree)?;
+        }
+    }
 
     Ok(())
 }

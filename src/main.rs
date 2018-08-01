@@ -4,11 +4,13 @@ use std::path::PathBuf;
 extern crate rusqlite;
 extern crate serde_json;
 extern crate edit_rs;
+extern crate conv;
 
 mod error;
 mod idea;
 mod repl;
 mod core_commands;
+mod core_printers;
 
 use idea::*;
 use repl::*;
