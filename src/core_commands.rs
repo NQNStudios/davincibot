@@ -12,6 +12,8 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
         commands.insert("print".to_string(), HandlerList {
             delimiter: None,
             handlers: vec![CommandHandler::new(CommandArgs::Maximum(1), print)],
+            // TODO a handler that accepts print types, for quicker special
+            // printing than adding the proper meta tag?
         });
         commands.insert("listall".to_string(), HandlerList {
             delimiter: None,
@@ -96,6 +98,13 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
         // Progress bar will have to exclude Ideas marked archived/paused/etc.
         // but not done. Progress = done / done + shown
         // TODO pipe accidental git commands back to the shell, lol?
+        // TODO ignore command that creates an .ignore child if necessary and
+        // adds the args as tags. (Should it automatically overwrite inherited
+        // ignore tags? i.e. equivalent to typing `noignore` first?)
+        // TODO noignore command that adds an empty .ignore child, or clears
+        // existing .ignore child's tags
+        // TODO generic form of ignore command with syntax meta [meta_type]
+        // [meta_tag] i.e meta ignore done
     }
 
     commands
@@ -167,16 +176,15 @@ fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<
 }
 
 // TODO printing ideas should be prettier
-// TODO it should also be handled by implementing Display for the Idea type,
-// rather than put the print logic in this file
+// TODO print should also check a meta child called .type that specifies types
+// an Idea implements, and there should be a map of print functions for
+// displaying Ideas of that type specially! Use this, i.e. to specify that
+// `todo`-type Ideas should print a progress bar.
 fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let idea = tree.get_idea(repl.selected_id)?;
 
     println!("#{}: {}", idea.id, idea.name);
-    if idea.tags.len() == 0 {
-        println!("[No tags]");
-    }
-    else {
+    if idea.tags.len() > 0 {
         for tag in &idea.tags {
             print!("[{}] ", tag);
         }
@@ -197,6 +205,9 @@ fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> 
 
     println!("{}", description_to_print);
     println!("{} children", idea.child_ids.len()); // TODO print how many are hidden
+
+    // TODO do special printing using registered Idea type printers
+
 
     Ok(())
 }

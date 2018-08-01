@@ -273,19 +273,22 @@ impl IdeaTree {
         }
     }
 
-    fn get_ignore_tags(&self, id: i64) -> Result<Vec<String>> {
+    pub fn get_meta_tags(&self, id: i64, meta_type: &str) -> Result<Vec<String>> {
         let idea = self.get_idea(id)?;
-        // First check if this idea has an .ignore child to pull tags from
+
+        let meta_idea_name = format!(".{}", meta_type);
+
+        // First check if this idea has a .{meta_type} child to pull tags from
         for child_id in idea.child_ids{
             let child_idea = self.get_idea(child_id)?;
-            if child_idea.name == ".ignore" {
+            if child_idea.name == meta_idea_name {
                 return Ok(child_idea.tags);
             }
         }
 
-        // If not, check if the parent has an .ignore child and return those
+        // If not, check if the parent has a .{meta_type} child and return those
         if let Some(parent_id) = idea.parent_id {
-            return self.get_ignore_tags(parent_id);
+            return self.get_meta_tags(parent_id, meta_idea_name);
         }
 
         Ok(Vec::new())
@@ -297,7 +300,7 @@ impl IdeaTree {
 
         // TODO get the tags of this Idea's ignore child, or parent's ignore
         // child
-        let ignore_tags = self.get_ignore_tags(id)?;
+        let ignore_tags = self.get_meta_tags(id, "ignore")?;
 
         if !include_hidden {
             child_ids.retain(|child_id| {
