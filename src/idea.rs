@@ -94,8 +94,8 @@ impl IdeaTree {
 
     // TODO need to validate the names of ideas being created, or renamed
     // Names should not be able to
-    // contain:  "->",
-    // start with: "exit", "/", "^", "@", or a digit
+    // contain:  "->", "/", "[", "]"
+    // start with: "exit", "^", "@", or a digit
     // or have leading/trailing whitespace
     pub fn create_idea(&mut self, parent_id: i64, name: String, args: Option<[Option<&ToSql>; 3]>) -> Result<i64> {
         self.error_on_duplicate_child(parent_id, name.clone())?;
@@ -294,19 +294,17 @@ impl IdeaTree {
     pub fn get_meta_tags(&self, id: i64, meta_type: &str) -> Result<Vec<String>> {
         let idea = self.get_idea(id)?;
 
-        let meta_idea_name = format!(".{}", meta_type);
-
         // First check if this idea has a .{meta_type} child to pull tags from
         for child_id in idea.child_ids{
             let child_idea = self.get_idea(child_id)?;
-            if child_idea.name == meta_idea_name {
+            if child_idea.name == format!(".{}", meta_type) {
                 return Ok(child_idea.tags);
             }
         }
 
         // If not, check if the parent has a .{meta_type} child and return those
         if let Some(parent_id) = idea.parent_id {
-            return self.get_meta_tags(parent_id, &meta_idea_name);
+            return self.get_meta_tags(parent_id, meta_type);
         }
 
         Ok(Vec::new())
