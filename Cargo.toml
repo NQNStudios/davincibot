@@ -1,10 +1,10 @@
 [package]
 authors = [
     "Nat Quayle Nelson <natquaylenelson@gmail.com>",
-    "Sid Shanker <sshanker220@gmail.com>",
-    "Omayeli Arenyeka <aomayeli@gmail.com>",
-    "Kevin Martin <kevinmartinucr@gmail.com>",
-    "Eliana Abraham <elabraha@umich.edu>",
+    "Sid Shanker",
+    "Omayeli Arenyeka",
+    "Kevin Martin",
+    "Eliana Abraham",
 ]
 exclude = [
     "deprecated/*"
