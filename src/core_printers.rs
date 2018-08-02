@@ -34,9 +34,23 @@ fn progress(todo_idea: &Idea, tree: &IdeaTree) -> Result<f64> {
             sum += progress(&tree.get_idea(*child_id)?, tree)?;
         }
 
-        // TODO exclude archived, paused, etc. Ideas from count
 
-        match todo_idea.child_ids.len().value_as::<f64>() {
+        let mut count = todo_idea.child_ids.len();
+        // exclude archived, paused, etc. Ideas from count
+        let ignore_tags = tree.get_meta_tags(todo_idea.id, "ignore")?;
+
+        for child_id in &todo_idea.child_ids {
+            let child_tags = tree.get_tags(*child_id, false)?;
+
+            for tag in &ignore_tags {
+                if tag != "done" && child_tags.contains(&tag) {
+                    count -= 1;
+                }
+            }
+        }
+
+
+        match count.value_as::<f64>() {
             Ok(count) => Ok(sum / count),
             Err(_) => Err(Error::DaVinci(format!("Too many children of Idea #{} for floating point calculation.", todo_idea.id))),
         }

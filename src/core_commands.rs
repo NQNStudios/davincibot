@@ -176,6 +176,11 @@ fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<
     tree.clear_tags(repl.selected_id)
 }
 
+// TODO this is a janky helper function that doesn't account for terminal width
+fn print_hr() {
+    println!("--------------");
+}
+
 // TODO printing ideas should be prettier
 // TODO print should also check a meta child called .type that specifies types
 // an Idea implements, and there should be a map of print functions for
@@ -184,6 +189,7 @@ fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<
 fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let idea = tree.get_idea(repl.selected_id)?;
 
+    print_hr();
     println!("#{}: {}", idea.id, idea.name);
     if idea.tags.len() > 0 {
         for tag in &idea.tags {
@@ -191,22 +197,29 @@ fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> 
         }
         println!();
     }
-    println!("---");
+    print_hr();
 
-    let description_limit = match args.into_iter().next() {
-        Some(limit) => str::parse::<usize>(&limit)?,
-        None => idea.description.len(),
-    };
+    if idea.description.len() > 0 {
+        let description_limit = match args.into_iter().next() {
+            Some(limit) => str::parse::<usize>(&limit)?,
+            None => idea.description.len(),
+        };
 
-    let description_to_print = if description_limit < idea.description.len() {
-        format!("{}...", &idea.description[0..description_limit])
-    } else {
-        // TODO this clone() shouldn't be necessary
-        idea.description.clone()
-    };
+        let description_to_print = if description_limit < idea.description.len() {
+            format!("{}...", &idea.description[0..description_limit])
+        } else {
+            // TODO this clone() shouldn't be necessary
+            idea.description.clone()
+        };
 
-    println!("{}", description_to_print);
-    println!("{} children", idea.child_ids.len()); // TODO print how many are hidden
+        println!("{}", description_to_print);
+        print_hr();
+    }
+
+    if idea.child_ids.len() > 0 {
+        println!("{} children", idea.child_ids.len()); // TODO print how many are hidden
+        print_hr();
+    }
 
     // do special printing using registered Idea type printers
     for (idea_type, idea_printer) in &repl.printers {
@@ -215,6 +228,7 @@ fn print(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> 
 
         if tree.get_tags(repl.selected_id, always_inherited)?.contains(&idea_type) {
             (*printer_implementation)(&idea, tree)?;
+            print_hr();
         }
     }
 
