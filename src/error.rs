@@ -1,12 +1,14 @@
 extern crate std;
 extern crate rusqlite;
 extern crate serde_json;
+extern crate serde_yaml;
 extern crate edit_rs;
 
 #[derive(Debug)]
 pub enum Error {
     Rusqlite(rusqlite::Error),
     SerdeJson(serde_json::Error),
+    SerdeYaml(serde_yaml::Error),
     DaVinci(String),
     ParseInt(std::num::ParseIntError),
     EditRS(edit_rs::Error),
@@ -40,6 +42,12 @@ impl From<edit_rs::Error> for Error {
 impl From<std::str::Utf8Error> for Error {
     fn from(e: std::str::Utf8Error) -> Self {
         self::Error::Utf8(e)
+    }
+}
+
+impl From<serde_yaml::Error> for Error {
+    fn from(e: serde_yaml::Error) -> Self {
+        self::Error::SerdeYaml(e)
     }
 }
 

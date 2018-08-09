@@ -1,7 +1,12 @@
 extern crate rusqlite;
+extern crate serde;
 extern crate serde_json;
+extern crate serde_yaml;
 
 use std::path::Path;
+use std::collections::BTreeMap;
+
+use idea::serde::Deserialize;
 
 use rusqlite::{Connection};
 use rusqlite::types::{Value, Null, ToSql};
@@ -20,6 +25,15 @@ pub struct Idea {
 
     pub parent_id: Option<i64>,
     pub child_ids: Vec<i64>,
+}
+
+impl Idea {
+    pub fn get_yaml_data(&self) -> Result<BTreeMap<String, f64>>
+    {
+        let map: BTreeMap<String, f64> = serde_yaml::from_str(&self.description)?;
+
+        Ok(map)
+    }
 }
 
 pub struct IdeaTree {
@@ -291,23 +305,46 @@ impl IdeaTree {
         }
     }
 
-    pub fn get_meta_tags(&self, id: i64, meta_type: &str) -> Result<Vec<String>> {
+    pub fn get_meta_idea(&self, id: i64, meta_type: &str) -> Result<Option<Idea>> {
         let idea = self.get_idea(id)?;
 
-        // First check if this idea has a .{meta_type} child to pull tags from
-        for child_id in idea.child_ids{
+        // First check if this idea has a .{meta_type} child
+        for child_id in idea.child_ids {
             let child_idea = self.get_idea(child_id)?;
             if child_idea.name == format!(".{}", meta_type) {
-                return Ok(child_idea.tags);
+                return Ok(Some(child_idea));
             }
         }
 
-        // If not, check if the parent has a .{meta_type} child and return those
+        // If it doesn't, check if its parent does (all the way back up the tree)
         if let Some(parent_id) = idea.parent_id {
-            return self.get_meta_tags(parent_id, meta_type);
+            self.get_meta_idea(parent_id, meta_type)
+        } else {
+            Ok(None)
         }
+    }
 
-        Ok(Vec::new())
+    pub fn get_meta_number(&self, id: i64, meta_type: &str, number: &str) -> Result<Option<f64>> {
+        let idea = self.get_meta_idea(id, meta_type)?;
+
+        if let Some(idea) = idea {
+            Ok(idea.get_yaml_data()?.remove(number))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn get_meta_tags(&self, id: i64, meta_type: &str) -> Result<Vec<String>> {
+        let idea = self.get_meta_idea(id, meta_type)?;
+
+        if let Some(idea) = idea {
+            Ok(idea.tags)
+        }
+        // It's not an error if there is no meta idea with that name,
+        // just return an empty tag list
+        else {
+            Ok(Vec::new())
+        }
     }
 
     pub fn get_child_ids(&self, id: i64, include_hidden: bool) -> Result<Vec<i64>> {

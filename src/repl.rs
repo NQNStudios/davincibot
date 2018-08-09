@@ -2,6 +2,7 @@ use std::io::Write;
 use std::io;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::borrow::Borrow;
 
 use idea::{IdeaTree, Idea};
 use error::{Result, Error};
@@ -160,12 +161,80 @@ impl Repl {
 
     pub fn run(&mut self, tree: &mut IdeaTree) {
         self.run_command(tree, "select @".to_string());
-        Repl::prompt("$", |input_line| { self.run_command(tree, input_line.to_string()); Ok(true) });
-        // TODO confirm quitting Davincibot
+        self.print(tree).expect("Printing failed"); // TODO print should never fail
+
+        // Read
+        Repl::prompt("$", |input_line| {
+            // Execute
+            self.run_command(tree, input_line.to_string());
+
+            // Print
+            self.print(tree)?;
+
+            // Loop
+            Ok(true)
+        });
+
+        // TODO confirm before quitting Davincibot?
     }
 
-    // TODO Idea printing should be a function in this file like run_command,
-    // not defined in core_commands.rs as it is
+    // TODO this is a janky helper function that doesn't account for terminal width
+    fn print_hr(&self) {
+        println!("--------------");
+    }
+
+    // TODO Ideas should be printed in a prettier form somehow, with line
+    // wrapping
+    fn print(&self, tree: &IdeaTree) -> Result<()> {
+        let idea = tree.get_idea(self.selected_id)?;
+
+        let description_limit = tree.get_meta_number(self.selected_id, &"settings", &"max_description").unwrap_or(None).unwrap_or(idea.description.len() as f64);
+        let child_limit = tree.get_meta_number(self.selected_id, &"settings", &"max_children").unwrap_or(None).unwrap_or(idea.child_ids.len() as f64);
+
+        self.print_hr();
+        // TODO check max_name and shorten name printing
+        println!("#{}: {}", idea.id, idea.name);
+        if idea.tags.len() > 0 {
+            for tag in &idea.tags {
+                print!("[{}] ", tag);
+            }
+            println!();
+        }
+        self.print_hr();
+
+        if idea.description.len() > 0 {
+            let description_to_print = if (description_limit.floor() as usize) < idea.description.len() {
+                // TODO this probably doesn't account for multibyte chars!
+                format!("{}...", &idea.description[0..description_limit.floor() as usize])
+            } else {
+                // TODO this clone() shouldn't be necessary
+                idea.description.clone()
+            };
+
+            println!("{}", description_to_print);
+            self.print_hr();
+        }
+
+
+        if idea.child_ids.len() > 0 {
+            println!("{} children", idea.child_ids.len()); // TODO print how many are hidden
+            // TODO and also truncate children
+            self.print_hr();
+        }
+
+        // do special printing using registered Idea type printers
+        for (idea_type, idea_printer) in &self.printers {
+            let always_inherited = idea_printer.always_inherited;
+            let printer_implementation: &PrinterImplementation = idea_printer.implementation.borrow();
+
+            if tree.get_tags(self.selected_id, always_inherited)?.contains(&idea_type) {
+                (*printer_implementation)(&idea, tree)?;
+                self.print_hr();
+            }
+        }
+
+        Ok(())
+    }
 
     pub fn run_command(&mut self, tree: &mut IdeaTree, input_line: String) {
         // An empty query is a no-op
