@@ -19,12 +19,12 @@ impl From<yaml_rust::ScanError> for Error {
     }
 }
 
-
 impl From<rusqlite::Error> for Error {
     fn from(e: rusqlite::Error) -> Self {
         self::Error::Rusqlite(e)
     }
 }
+
 impl From<std::num::ParseIntError> for Error {
     fn from(e: std::num::ParseIntError) -> Self {
         self::Error::ParseInt(e)
