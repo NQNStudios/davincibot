@@ -1,7 +1,7 @@
 extern crate rusqlite;
-extern crate serde_json;
 extern crate edit_rs;
 extern crate conv;
+extern crate yaml_rust;
 
 pub mod error;
 pub mod idea;

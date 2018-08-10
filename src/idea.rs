@@ -1,17 +1,44 @@
 extern crate rusqlite;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
+extern crate yaml_rust;
 
 use std::path::Path;
-use std::collections::BTreeMap;
 
-use idea::serde::Deserialize;
+use yaml_rust::{YamlLoader, YamlEmitter, Yaml};
 
 use rusqlite::{Connection};
 use rusqlite::types::{Value, Null, ToSql};
 
 use error::*;
+
+// NOTE unwrap is used below because Da Vinci Bot promises only to put
+// string values in the tags field of the database:
+fn tag_vec_from_yaml(yaml: &str) -> Vec<String> {
+    YamlLoader::load_from_str(yaml).unwrap().remove(0).into_iter().map(|tag| tag.as_str().unwrap().to_string()).collect()
+}
+
+// NOTE unwrap is used below because Da Vinci Bot promises only to put
+// i64 values in the child_ids field of the database:
+fn id_vec_from_yaml(yaml: &str) -> Vec<i64> {
+    YamlLoader::load_from_str(yaml).unwrap().remove(0).into_iter().map(|child_id| child_id.as_i64().unwrap()).collect()
+}
+
+fn tag_vec_to_yaml(vec: Vec<String>) -> String {
+    let mut yaml = String::new();
+    {
+        let mut emitter = YamlEmitter::new(&mut yaml);
+        emitter.dump(&Yaml::Array(vec.into_iter().map(|tag| Yaml::String(tag)).collect())).expect("Serialization failed");
+    }
+    yaml
+}
+
+fn id_vec_to_yaml(vec: Vec<i64>) -> String {
+    let mut yaml = String::new();
+    {
+        let mut emitter = YamlEmitter::new(&mut yaml);
+        emitter.dump(&Yaml::Array(vec.into_iter().map(|id| Yaml::Integer(id)).collect())).expect("Failed");
+    }
+    yaml
+}
 
 // An Idea is the basic building block of Da Vinci Bot.
 // TODO explain exactly how Ideas work and why
@@ -28,11 +55,10 @@ pub struct Idea {
 }
 
 impl Idea {
-    pub fn get_yaml_data(&self) -> Result<BTreeMap<String, f64>>
+    pub fn get_yaml_data(&self) -> Result<Vec<Yaml>>
     {
-        let map: BTreeMap<String, f64> = serde_yaml::from_str(&self.description)?;
-
-        Ok(map)
+        let yaml = YamlLoader::load_from_str(&self.description)?;
+        Ok(yaml)
     }
 }
 
@@ -69,7 +95,7 @@ impl IdeaTree {
             /*println!("Root idea: {:?}", tree.get_idea(1));*/
             tree.create_idea(1, ".ignore".to_string(), Some([
                                      Some(&"The tags applied to this Idea will be hidden when listing children of this Idea's parent or any of its children that don't have their own .ignore child."),
-                                     Some(&serde_json::to_string(&vec![&"done", &"hidden", &"archived", &"paused"])?.as_str()),
+                                     Some(&r#"["done", "hidden", "archived", "paused"]""#),
                                      None,
             ]))?;
             /*println!("Root idea after adding child: {:?}", tree.get_idea(1));*/
@@ -163,7 +189,7 @@ impl IdeaTree {
 
         let mut statement = self.conn.prepare_cached("UPDATE ideas SET child_ids=? where id=?")?;
         let args: &[&ToSql] = &[
-            &serde_json::to_string(&child_ids)?,
+            &id_vec_to_yaml(child_ids),
             &parent_id
         ];
 
@@ -185,7 +211,7 @@ impl IdeaTree {
         child_ids.retain(|&id| id != child_id);
         let mut statement = self.conn.prepare_cached("UPDATE ideas SET child_ids=? where id=?")?;
         let args: &[&ToSql] = &[
-            &serde_json::to_string(&child_ids)?,
+            &id_vec_to_yaml(child_ids),
             &parent_id
         ];
 
@@ -256,8 +282,8 @@ impl IdeaTree {
     }
 
     pub fn get_tags(&self, id: i64, inherit_tags: bool) -> Result<Vec<String>> {
-        let tags_json: String = self.conn.query_row("SELECT tags FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
-        let mut tags: Vec<String> = serde_json::from_str(tags_json.as_str())?;
+        let tags_yaml: String = self.conn.query_row("SELECT tags FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
+        let mut tags: Vec<String> = tag_vec_from_yaml(&tags_yaml);
 
         if inherit_tags {
             if let Some(parent_id) = self.get_parent_id(id)? {
@@ -275,7 +301,7 @@ impl IdeaTree {
     pub fn set_tags(&mut self, id: i64, tags: Vec<String>) -> Result<()> {
         let mut statement = self.conn.prepare_cached("UPDATE ideas SET tags=? WHERE id=?")?;
 
-        statement.execute(&[&serde_json::to_string(&tags)?, &id])?;
+        statement.execute(&[&tag_vec_to_yaml(tags), &id])?;
         Ok(())
     }
 
@@ -324,16 +350,6 @@ impl IdeaTree {
         }
     }
 
-    pub fn get_meta_number(&self, id: i64, meta_type: &str, number: &str) -> Result<Option<f64>> {
-        let idea = self.get_meta_idea(id, meta_type)?;
-
-        if let Some(idea) = idea {
-            Ok(idea.get_yaml_data()?.remove(number))
-        } else {
-            Ok(None)
-        }
-    }
-
     pub fn get_meta_tags(&self, id: i64, meta_type: &str) -> Result<Vec<String>> {
         let idea = self.get_meta_idea(id, meta_type)?;
 
@@ -348,11 +364,9 @@ impl IdeaTree {
     }
 
     pub fn get_child_ids(&self, id: i64, include_hidden: bool) -> Result<Vec<i64>> {
-        let child_ids_json: String = self.conn.query_row("SELECT child_ids FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
-        let mut child_ids: Vec<i64> = serde_json::from_str(child_ids_json.as_str())?;
+        let child_ids_yaml: String = self.conn.query_row("SELECT child_ids FROM ideas WHERE id=?", &[&id], |row| { row.get(0) })?;
+        let mut child_ids: Vec<i64> = id_vec_from_yaml(&child_ids_yaml);
 
-        // TODO get the tags of this Idea's ignore child, or parent's ignore
-        // child
         let ignore_tags = self.get_meta_tags(id, "ignore")?;
 
         if !include_hidden {
@@ -375,8 +389,8 @@ impl IdeaTree {
 
     pub fn get_idea(&self, id: i64) -> Result<Idea> { 
         let idea: Result<Idea> = self.conn.query_row("SELECT * FROM ideas WHERE id=?", &[&id], |row| -> Result<Idea> {
-            let tags = serde_json::from_str(row.get::<i32, String>(3).as_str())?;
-            let child_ids = serde_json::from_str(row.get::<i32, String>(5).as_str())?;
+            let tags = tag_vec_from_yaml(row.get::<i32, String>(3).as_str()) ;
+            let child_ids = id_vec_from_yaml(row.get::<i32, String>(5).as_str());
 
             Ok(Idea {
                 id,

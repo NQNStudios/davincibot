@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::borrow::Borrow;
 
+use yaml_rust::Yaml;
+
 use idea::{IdeaTree, Idea};
 use error::{Result, Error};
 
@@ -188,8 +190,22 @@ impl Repl {
     fn print(&self, tree: &IdeaTree) -> Result<()> {
         let idea = tree.get_idea(self.selected_id)?;
 
-        let description_limit = tree.get_meta_number(self.selected_id, &"settings", &"max_description").unwrap_or(None).unwrap_or(idea.description.len() as f64);
-        let child_limit = tree.get_meta_number(self.selected_id, &"settings", &"max_children").unwrap_or(None).unwrap_or(idea.child_ids.len() as f64);
+        let description_limit = match tree.get_meta_idea(self.selected_id, &"settings")? {
+            Some(settings) => {
+                if let Some(settings_yaml) = settings.get_yaml_data()?.into_iter().next() {
+
+                    match settings_yaml["max_description"] {
+                        Yaml::BadValue => idea.description.len(),
+                        Yaml::Integer(max) => max as usize,
+                        _ => return Err(Error::DaVinci("max_description setting is not set to an integer!".to_string())),
+                    }
+                }
+                else {
+                    idea.description.len()
+                }
+            },
+            None => idea.description.len(),
+        };
 
         self.print_hr();
         // TODO check max_name and shorten name printing
@@ -203,9 +219,9 @@ impl Repl {
         self.print_hr();
 
         if idea.description.len() > 0 {
-            let description_to_print = if (description_limit.floor() as usize) < idea.description.len() {
+            let description_to_print = if description_limit < idea.description.len() {
                 // TODO this probably doesn't account for multibyte chars!
-                format!("{}...", &idea.description[0..description_limit.floor() as usize])
+                format!("{}...", &idea.description[0..description_limit])
             } else {
                 // TODO this clone() shouldn't be necessary
                 idea.description.clone()

@@ -3,6 +3,7 @@
 
 .*.json
 dist/
+*.swo
 *.swp
 # Logs
 logs
