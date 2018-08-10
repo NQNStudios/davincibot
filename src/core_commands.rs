@@ -9,6 +9,10 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
     let mut commands = HashMap::new();
 
     {
+        commands.insert("print".to_string(), HandlerList {
+            delimiter: None,
+            handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, args| repl.print(tree))],
+        });
         commands.insert("listall".to_string(), HandlerList {
             delimiter: None,
             handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, args| list(repl, tree, true))],
@@ -104,6 +108,7 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
 
 fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     repl.selected_id = repl.select_from_expression(tree, &args[0])?;
+    repl.print(tree);
 
     Ok(())
 }

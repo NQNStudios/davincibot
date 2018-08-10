@@ -170,9 +170,6 @@ impl Repl {
             // Execute
             self.run_command(tree, input_line.to_string());
 
-            // Print
-            self.print(tree)?;
-
             // Loop
             Ok(true)
         });
@@ -187,7 +184,7 @@ impl Repl {
 
     // TODO Ideas should be printed in a prettier form somehow, with line
     // wrapping
-    fn print(&self, tree: &IdeaTree) -> Result<()> {
+    pub fn print(&self, tree: &IdeaTree) -> Result<()> {
         let idea = tree.get_idea(self.selected_id)?;
 
         let description_limit = match tree.get_meta_idea(self.selected_id, &"settings")? {
