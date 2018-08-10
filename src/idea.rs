@@ -55,10 +55,8 @@ pub struct Idea {
 }
 
 impl Idea {
-    pub fn get_yaml_data(&self) -> Result<Vec<Yaml>>
-    {
-        let yaml = YamlLoader::load_from_str(&self.description)?;
-        Ok(yaml)
+    pub fn get_yaml_data(&self) -> Result<Option<Yaml>> {
+        Ok(YamlLoader::load_from_str(&self.description)?.into_iter().next())
     }
 }
 
@@ -89,17 +87,25 @@ impl IdeaTree {
             child_ids TEXT NOT NULL)", &[])?;
 
         // Create the root Idea in the database if one doesn't exist.
-        // Also create a .ignore Idea to ignore the default ignore tags
         if let Err(_) = tree.get_idea(1) {
             tree.create_root_idea()?;
-            /*println!("Root idea: {:?}", tree.get_idea(1));*/
-            tree.create_idea(1, ".ignore".to_string(), Some([
-                                     Some(&"The tags applied to this Idea will be hidden when listing children of this Idea's parent or any of its children that don't have their own .ignore child."),
-                                     Some(&r#"["done", "hidden", "archived", "paused"]""#),
-                                     None,
+            // Also create a .ignore Idea to ignore the default ignore tags
+            tree.create_idea(1,
+                             ".ignore".to_string(),
+                             Some([
+                                 Some(&"The tags applied to this Idea will be hidden when listing children of this Idea's parent or any of its children that don't have their own .ignore child."),
+                                 Some(&r#"["done", "hidden", "archived", "paused"]"#),
+                                 None,
             ]))?;
-            /*println!("Root idea after adding child: {:?}", tree.get_idea(1));*/
-            /*println!("Child idea: {:?}", tree.get_idea(2));*/
+            // Also create a .settings Idea with sensible defaults for
+            // truncating Idea output
+            tree.create_idea(1,
+                             ".settings".to_string(),
+                             Some([
+                                  Some(&"tutorial: The settings defined in Yaml format in this Idea's description will be applied to operations on all of the root idea's children by default, but can be overridden by adding another .settings child.\nmax_description: 70"),
+                                  None,
+                                  None,
+            ]))?;
         }
 
         Ok(tree)
@@ -163,7 +169,7 @@ impl IdeaTree {
                 creation_args.extend(
                     user_args.into_iter().enumerate().map(|arg| match arg {
                         (_, Some(arg)) => arg.clone(),
-                        (idx, None) => default_args[idx].clone(),
+                        (idx, None) => default_args[idx+1].clone(),
                     }));
                 creation_args.push(&Null);
             }
@@ -330,6 +336,8 @@ impl IdeaTree {
             _ => panic!("The parent_id row of an Idea in the database is neither Null nor an ID!")
         }
     }
+
+    /*pub fn get_meta_yaml(&self, id: i64, */
 
     pub fn get_meta_idea(&self, id: i64, meta_type: &str) -> Result<Option<Idea>> {
         let idea = self.get_idea(id)?;

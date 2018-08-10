@@ -192,7 +192,7 @@ impl Repl {
 
         let description_limit = match tree.get_meta_idea(self.selected_id, &"settings")? {
             Some(settings) => {
-                if let Some(settings_yaml) = settings.get_yaml_data()?.into_iter().next() {
+                if let Some(settings_yaml) = settings.get_yaml_data()? {
 
                     match settings_yaml["max_description"] {
                         Yaml::BadValue => idea.description.len(),
