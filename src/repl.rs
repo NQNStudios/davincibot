@@ -326,10 +326,7 @@ impl Repl {
                         println!("'{}' command returned an error: {:?}", command, e);
                     }
                 },
-                None => match &self.commands[&command].delimiter {
-                    Some(delimiter) => println!("Can't call '{}' command with {} arguments", command, args.len()),
-                    None => println!("The '{}' command does not take arguments", command),
-                }
+                None => println!("Can't call '{}' command with {} arguments", command, args.len()),
             }
         }
         else {
@@ -394,6 +391,7 @@ impl Repl {
     }
 
     pub fn print_help(&self) {
+        // TODO print brackets around the first ocurrance of shortcut character
         for (command_name, command) in &self.commands {
             // TODO this should handle nice wrapping
             println!("{}: {}", command_name, command.description);

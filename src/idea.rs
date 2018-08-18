@@ -96,16 +96,39 @@ impl IdeaTree {
                                  Some(&"The tags applied to this Idea will be hidden when listing children of this Idea's parent or any of its children that don't have their own .ignore child."),
                                  Some(&r#"["done", "hidden", "archived", "paused"]"#),
                                  None,
-            ]))?;
+                             ]))?;
+
             // Also create a .settings Idea with sensible defaults for
             // truncating Idea output
             tree.create_idea(1,
                              ".settings".to_string(),
                              Some([
-                                  Some(&"tutorial: The settings defined in Yaml format in this Idea's description will be applied to operations on all of the root idea's children by default, but can be overridden by adding another .settings child.\nmax_description: 90"),
+                                  Some(&"tutorial: The settings defined in Yaml format in this Idea's description will be applied to operations on all of the root idea's children by default, but can be overridden by adding another .settings child.\nmax_description: 300"),
                                   None,
                                   None,
-            ]))?;
+                             ]))?;
+
+            // Also create a .shortcuts Idea with single-character shortcuts
+            // for the most common core commands
+            tree.create_idea(1,
+                             ".shortcuts".to_string(),
+                             Some([
+                                  Some(&r#"
+                                      h: help
+                                      p: print
+                                      l: list
+                                      s: select
+                                      a: add
+                                      t: tag
+                                      u: untag
+                                      m: move
+                                      d: describe
+                                      r: rename
+                                       "#
+                                   ),
+                                   None,
+                                   None,
+                             ]))?;
         }
 
         Ok(tree)
