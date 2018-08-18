@@ -68,15 +68,16 @@ impl CommandHandler {
     }
 }
 
-pub struct HandlerList {
+pub struct Command {
+    pub description: &'static str,
     pub delimiter: Option<String>,
     pub handlers: Vec<CommandHandler>,
 }
 
 pub struct Repl {
     pub selected_id: i64,
-    commands: HashMap<String, HandlerList>,
-    pub printers: HashMap<String, IdeaPrinter>,
+    commands: HashMap<String, Command>,
+    printers: HashMap<String, IdeaPrinter>,
 }
 
 impl Repl {
@@ -94,7 +95,7 @@ impl Repl {
 
     // add all the commands to this Repl's command map, and throw an
     // error if any of them are a duplicate command name
-    pub fn register_commands(&mut self, commands: HashMap<String, HandlerList>) {
+    pub fn register_commands(&mut self, commands: HashMap<String, Command>) {
         for (command, handler_list) in commands {
             if self.commands.contains_key(&command) {
                 println!("Error! Cannot add duplicate command with name '{}'", command);
@@ -163,7 +164,6 @@ impl Repl {
 
     pub fn run(&mut self, tree: &mut IdeaTree) {
         self.run_command(tree, "select @".to_string());
-        self.print(tree).expect("Printing failed"); // TODO print should never fail
 
         // Read
         Repl::prompt("$", |input_line| {
@@ -303,6 +303,9 @@ impl Repl {
         }
     }
 
+    // TODO find out how Git checks for commands with similar names to typos,
+    // and maybe use that to provide suggestions when name-based select
+    // expressions are mis-typed 
     fn select_from_expression_internal(selected_id: i64, tree: &IdeaTree, expression: &str) -> Result<i64> {
         match expression {
             // @ is the operator for selecting the root Idea
@@ -354,5 +357,12 @@ impl Repl {
             temp_selected = Repl::select_from_expression_internal(temp_selected, tree, part)?;
         }
         Ok(temp_selected)
+    }
+
+    pub fn print_help(&self) {
+        for (command_name, command) in &self.commands {
+            // TODO this should handle nice wrapping
+            println!("{}: {}", command_name, command.description);
+        }
     }
 }

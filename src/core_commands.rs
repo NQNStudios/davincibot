@@ -5,70 +5,90 @@ use std::collections::HashMap;
 
 use edit_rs::get_input;
 
-pub fn core_commands() -> HashMap<String, HandlerList> {
+pub fn core_commands() -> HashMap<String, Command> {
     let mut commands = HashMap::new();
 
     {
-        commands.insert("print".to_string(), HandlerList {
+        commands.insert("help".to_string(), Command {
+            description: "Display the full command list, or specific usage instructions for a given command",
+            delimiter: None,
+            handlers: vec![
+                CommandHandler::new(CommandArgs::Zero, print_help),
+                CommandHandler::new(CommandArgs::Amount(1), print_command_help),
+            ],
+        });
+        commands.insert("print".to_string(), Command {
+            description: "Print the current Idea's summary",
             delimiter: None,
             handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, args| repl.print(tree))],
         });
-        commands.insert("listall".to_string(), HandlerList {
+        commands.insert("listall".to_string(), Command {
+            description: "List all children of the current Idea, including hidden ones.",
             delimiter: None,
             handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, args| list(repl, tree, true))],
         });
         // TODO list needs to allow pagination
-        commands.insert("list".to_string(), HandlerList {
+        commands.insert("list".to_string(), Command {
+            description: "List children of the current Idea",
             delimiter: Some(" ".to_string()),
             handlers: vec![
                 CommandHandler::new(CommandArgs::Zero, |repl, tree, args| list(repl, tree, false)),
                 CommandHandler::new(CommandArgs::VarArgs, |repl, tree, args| list_with_tags(repl, tree, args)),
             ],
         });
-        commands.insert("select".to_string(), HandlerList {
+        commands.insert("select".to_string(), Command {
+            description: "Select an Idea",
             delimiter: None,
             handlers: vec![
                 CommandHandler::new(CommandArgs::Amount(1), select),
             ],
         });
-        commands.insert("up".to_string(), HandlerList {
+        commands.insert("up".to_string(), Command {
+            description: "Select the current Idea's parent Idea",
             delimiter: None,
             handlers: vec![
                 CommandHandler::new(CommandArgs::Zero, |repl, tree, args| select(repl, tree, vec!["^".to_string()])),
             ],
         });
-        commands.insert("root".to_string(), HandlerList {
+        commands.insert("root".to_string(), Command {
+            description: "Select the root Idea of the current Tree",
             delimiter: None,
             handlers: vec![
                 CommandHandler::new(CommandArgs::Zero, |repl, tree, args| select(repl, tree, vec!["@".to_string()])),
             ],
         });
-        commands.insert("add".to_string(), HandlerList {
-            delimiter: Some(",".to_string()),
+        commands.insert("add".to_string(), Command {
+            description: "Add a new Idea as a child of the current one.",
+            delimiter: None,
             handlers: vec![
                 CommandHandler::new(CommandArgs::Zero, add_multiple),
-                CommandHandler::new(CommandArgs::Minimum(1), add),
+                CommandHandler::new(CommandArgs::Amount(1), add),
             ],
         });
-        commands.insert("tag".to_string(), HandlerList {
+        commands.insert("tag".to_string(), Command {
+            description: "Add tag(s) to the current Idea",
             delimiter: Some(" ".to_string()),
             handlers: vec![
                 CommandHandler::new(CommandArgs::Zero, tag_multiple),
                 CommandHandler::new(CommandArgs::Minimum(1), tag),
             ],
         });
-        commands.insert("untag".to_string(), HandlerList {
+        commands.insert("untag".to_string(), Command {
+            description: "Remove tag(s) from the current Idea",
             delimiter: Some(" ".to_string()),
             handlers: vec![CommandHandler::new(CommandArgs::Minimum(1), untag)],
             // TODO untag multiple?
         });
-        commands.insert("cleartags".to_string(), HandlerList {
+        commands.insert("cleartags".to_string(), Command {
+            description: "Clear all tags from the current Idea",
             delimiter: None,
             handlers: vec![CommandHandler::new(CommandArgs::Zero, cleartags)],
-            // TODO cleartags multiple? (although, cleartags already takes zero
-            // arguments so the disambiguation would be weird)
+            // TODO cleartags implementation that allows selecting multiple
+            // Ideas? (although, cleartags already takes zero arguments so it
+            // would need a different command name
         });
-        commands.insert("move".to_string(), HandlerList {
+        commands.insert("move".to_string(), Command {
+            description: "Move Idea(s) from one parent to another",
             delimiter: Some("->".to_string()),
             handlers: vec![
                 CommandHandler::new(CommandArgs::Amount(2), move_both_args),
@@ -76,14 +96,16 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
                 CommandHandler::new(CommandArgs::Zero, move_multiple),
             ],
         });
-        commands.insert("describe".to_string(), HandlerList {
+        commands.insert("describe".to_string(), Command {
+            description: "Edit the current Idea's description",
             delimiter: None,
             handlers: vec![
                 CommandHandler::new(CommandArgs::Amount(1), describe),
                 CommandHandler::new(CommandArgs::Zero, describe),
             ],
         });
-        commands.insert("rename".to_string(), HandlerList {
+        commands.insert("rename".to_string(), Command {
+            description: "Rename an Idea",
             delimiter: Some("->".to_string()),
             handlers: vec![
                 CommandHandler::new(CommandArgs::Amount(2), rename_any),
@@ -92,6 +114,7 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
             ],
         });
         // TODO reordering children
+        // TODO sorting children -- lexicographically?
         // TODO add n ideas
         // TODO pipe accidental git commands back to the shell, lol?
         // TODO ignore command that creates an .ignore child if necessary and
@@ -106,9 +129,23 @@ pub fn core_commands() -> HashMap<String, HandlerList> {
     commands
 }
 
+fn print_help(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    repl.print_help();
+
+    Ok(())
+}
+
+fn print_command_help(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let command_name = &args[0];
+
+    // TODO print info on the behavior and different overloads of the given command
+
+    Ok(())
+}
+
 fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     repl.selected_id = repl.select_from_expression(tree, &args[0])?;
-    repl.print(tree);
+    repl.print(tree)?;
 
     Ok(())
 }
@@ -203,11 +240,10 @@ fn list_with_tags(repl: &Repl, tree: &IdeaTree, tags: Vec<String>) -> Result<()>
 }
 
 fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    for arg in args {
-        if arg != "" {
-            tree.create_idea(repl.selected_id, arg, None)?;
-        }
-    }
+    let name = &args[0];
+    let id = tree.create_idea(repl.selected_id, name.to_string(), None)?;
+    repl.run_command(tree, format!("select {}", id));
+
     Ok(())
 }
 
