@@ -99,6 +99,8 @@ impl Repl {
         for (command, handler_list) in commands {
             if self.commands.contains_key(&command) {
                 println!("Error! Cannot add duplicate command with name '{}'", command);
+            } else if command.len() == 1 {
+                println!("Error! Commands cannot have single-character names.");
             } else {
                 self.commands.insert(command, handler_list);
             }
@@ -190,6 +192,8 @@ impl Repl {
         let description_limit = match tree.get_meta_idea(self.selected_id, &"settings")? {
             Some(settings) => {
                 if let Some(settings_yaml) = settings.get_yaml_data()? {
+                    // TODO allow setting a maximum line count for the
+                    // description output as well
 
                     match settings_yaml["max_description"] {
                         Yaml::BadValue => idea.description.len(),
@@ -257,15 +261,45 @@ impl Repl {
 
         // The first token of every input line should be a valid command name
         let mut parts = input_line.splitn(2, " ");
-        let command = parts.next().unwrap();
+        let mut command = parts.next().unwrap().to_string();
 
-        if self.commands.contains_key(command) {
+        if command.len() == 1 {
+            command = match tree.get_meta_idea(self.selected_id, &"shortcuts").unwrap_or(None) {
+                Some(shortcuts) => {
+                    if let Some(shortcuts_yaml) = shortcuts.get_yaml_data().unwrap_or(None) {
+                        match &shortcuts_yaml[command.as_str()] {
+                            Yaml::BadValue => {
+                                println!("Error! No command for shortcut '{}'", command);
+                                return;
+                            },
+                            Yaml::String(shortcut_command) => {
+                                shortcut_command.clone()
+                            },
+                            _ => {
+                                println!("Error! Command for shortcut '{}' is not a string!", command);
+                                return;
+                            },
+                        }
+                    }
+                    else {
+                        println!("Error! The description of the shortcuts meta idea #{} is not properly formatted YAML", shortcuts.id);
+                        return;
+                    }
+                },
+                None => {
+                    println!("Error! No command shortcuts are defined.");
+                    return;
+                }, 
+            };
+        }
+
+        if self.commands.contains_key(&command) {
 
             let args;
             let mut handler: Option<Rc<CommandImplementation>> = None;
 
             {
-                let handler_list = &self.commands[command];
+                let handler_list = &self.commands[&command];
                 args = match parts.next() {
                     Some(inputs) => match inputs.len() {
                         0 => Vec::new(),
@@ -292,7 +326,7 @@ impl Repl {
                         println!("'{}' command returned an error: {:?}", command, e);
                     }
                 },
-                None => match &self.commands[command].delimiter {
+                None => match &self.commands[&command].delimiter {
                     Some(delimiter) => println!("Can't call '{}' command with {} arguments", command, args.len()),
                     None => println!("The '{}' command does not take arguments", command),
                 }

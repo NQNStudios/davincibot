@@ -102,7 +102,7 @@ impl IdeaTree {
             tree.create_idea(1,
                              ".settings".to_string(),
                              Some([
-                                  Some(&"tutorial: The settings defined in Yaml format in this Idea's description will be applied to operations on all of the root idea's children by default, but can be overridden by adding another .settings child.\nmax_description: 70"),
+                                  Some(&"tutorial: The settings defined in Yaml format in this Idea's description will be applied to operations on all of the root idea's children by default, but can be overridden by adding another .settings child.\nmax_description: 90"),
                                   None,
                                   None,
             ]))?;
@@ -117,7 +117,7 @@ impl IdeaTree {
 
         let args: &[&ToSql] = &[
             &"Do All the Vastly Impractical Nonsense Conceivable In (short) Bursts Of Time!", // Name
-            &"This is the root Idea for your Da Vinci Bot project.", // Description
+            &"This is the root Idea for your Da Vinci Bot project.\nType 'help' for a command list.\n\nSupport this free, open-source project by contributing on GitHub (https://github.com/NQNStudios/davincibot) or Patreon (https://patreon.com/natquaylenelson).", // Description
             &"[]", // Tags
             &Null, // Parent ID
             &"[]", // Child IDS
