@@ -242,7 +242,7 @@ fn list_with_tags(repl: &Repl, tree: &IdeaTree, tags: Vec<String>) -> Result<()>
 fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let name = &args[0];
     let id = tree.create_idea(repl.selected_id, name.to_string(), None)?;
-    repl.run_command(tree, format!("select {}", id));
+    repl.run_command(tree, format!("select #{}", id));
 
     Ok(())
 }
