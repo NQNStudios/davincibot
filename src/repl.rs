@@ -397,4 +397,8 @@ impl Repl {
             println!("{}: {}", command_name, command.description);
         }
     }
+
+    pub fn print_command_help(&self, command: String) {
+        // TODO print info on the behavior and different overloads of the given command
+    }
 }

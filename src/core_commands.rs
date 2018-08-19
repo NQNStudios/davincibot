@@ -20,19 +20,19 @@ pub fn core_commands() -> HashMap<String, Command> {
         commands.insert("print".to_string(), Command {
             description: "Print the current Idea's summary",
             delimiter: None,
-            handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, args| repl.print(tree))],
+            handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| repl.print(tree))],
         });
         commands.insert("listall".to_string(), Command {
             description: "List all children of the current Idea, including hidden ones.",
             delimiter: None,
-            handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, args| list(repl, tree, true))],
+            handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| list(repl, tree, true))],
         });
         // TODO list needs to allow pagination
         commands.insert("list".to_string(), Command {
             description: "List children of the current Idea",
             delimiter: Some(" ".to_string()),
             handlers: vec![
-                CommandHandler::new(CommandArgs::Zero, |repl, tree, args| list(repl, tree, false)),
+                CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| list(repl, tree, false)),
                 CommandHandler::new(CommandArgs::VarArgs, |repl, tree, args| list_with_tags(repl, tree, args)),
             ],
         });
@@ -47,14 +47,14 @@ pub fn core_commands() -> HashMap<String, Command> {
             description: "Select the current Idea's parent Idea",
             delimiter: None,
             handlers: vec![
-                CommandHandler::new(CommandArgs::Zero, |repl, tree, args| select(repl, tree, vec!["^".to_string()])),
+                CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| select(repl, tree, vec!["^".to_string()])),
             ],
         });
         commands.insert("root".to_string(), Command {
             description: "Select the root Idea of the current Tree",
             delimiter: None,
             handlers: vec![
-                CommandHandler::new(CommandArgs::Zero, |repl, tree, args| select(repl, tree, vec!["@".to_string()])),
+                CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| select(repl, tree, vec!["@".to_string()])),
             ],
         });
         commands.insert("add".to_string(), Command {
@@ -129,16 +129,16 @@ pub fn core_commands() -> HashMap<String, Command> {
     commands
 }
 
-fn print_help(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+fn print_help(repl: &mut Repl, _tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
     repl.print_help();
 
     Ok(())
 }
 
-fn print_command_help(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    let command_name = &args[0];
+fn print_command_help(repl: &mut Repl, _tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let command_name = args.into_iter().next().unwrap();
 
-    // TODO print info on the behavior and different overloads of the given command
+    repl.print_command_help(command_name);
 
     Ok(())
 }
@@ -150,7 +150,7 @@ fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()>
     Ok(())
 }
 
-fn move_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+fn move_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
     let parent_id = repl.select_from_expression(tree, &Repl::prompt_for_args(vec!["destination?"])?[0])?;
     Repl::prompt(" idea to move:", |select_expression| {
         let id_to_move = repl.select_from_expression(tree, &select_expression)?;
@@ -180,7 +180,7 @@ fn tag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> {
     tree.add_tags(repl.selected_id, tags)
 }
 
-fn tag_multiple(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+fn tag_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
     let tags: Vec<String> = Repl::prompt_for_args(vec!["tags?"])?[0].split(" ").map(|tag| tag.to_string()).collect();
 
     // Collect all the ids to tag without applying any,
@@ -202,14 +202,12 @@ fn untag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> 
     tree.remove_tags(repl.selected_id, tags)
 }
 
-fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
     tree.clear_tags(repl.selected_id)
 }
 
-// TODO don't list hidden ones with a numeric index even when show_all is given
 fn list(repl: &Repl, tree: &IdeaTree, show_all: bool) -> Result<()> {
     let shown_child_ids = tree.get_child_ids(repl.selected_id, false)?;
-    let all_child_ids = tree.get_child_ids(repl.selected_id, true)?;
 
     for (child_idx, id) in shown_child_ids.iter().enumerate() {
         let child= tree.get_name_with_tags(*id)?;
@@ -234,7 +232,7 @@ fn list(repl: &Repl, tree: &IdeaTree, show_all: bool) -> Result<()> {
 // TODO this is now ambiguous because get_name_with_tags() is already what's 
 // printed from `list`
 fn list_with_tags(repl: &Repl, tree: &IdeaTree, tags: Vec<String>) -> Result<()> {
-    // TODO only list children that have the right tags (including hidden ones)
+
 
     Ok(())
 }
