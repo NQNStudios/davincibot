@@ -113,6 +113,13 @@ pub fn core_commands() -> HashMap<String, Command> {
                 CommandHandler::new(CommandArgs::Amount(0), rename_selected),
             ],
         });
+        commands.insert("search".to_string(), Command {
+            description: "Search for Ideas containing a given phrase anywhere",
+            delimiter: None,
+            handlers: vec![
+                CommandHandler::new(CommandArgs::Amount(1), search),
+            ],
+        });
         // TODO reordering children
         // TODO sorting children -- lexicographically?
         // TODO add n ideas
@@ -288,4 +295,20 @@ fn rename_selected(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> R
     };
 
     tree.set_name(repl.selected_id, &new_name)
+}
+
+fn search(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let query = args.into_iter().next().unwrap();
+
+    let matches = tree.search_ideas(&query)?;
+
+    if matches.len() == 0 {
+        println!("No matches for query '{}'", query);
+    } else {
+        for idea in matches {
+            println!("#{}: {}", idea.id, idea.format_name_with_tags());
+        }
+    }
+
+    Ok(())
 }

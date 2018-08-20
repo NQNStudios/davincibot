@@ -9,7 +9,7 @@ authors = [
 name = "davincibot"
 description="A command-line utility for managing absurdly eclectic interests."
 license="GPL-3.0"
-version = "0.0.9"
+version = "0.0.10"
 [dependencies]
 yaml-rust = "0.4"
 rusqlite = "0.13.0"

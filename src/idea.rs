@@ -5,10 +5,11 @@ use std::path::Path;
 
 use yaml_rust::{YamlLoader, YamlEmitter, Yaml};
 
-use rusqlite::{Connection};
+use rusqlite::{Connection, Row};
 use rusqlite::types::{Value, Null, ToSql};
 
 use error::*;
+
 
 // NOTE unwrap is used below because Da Vinci Bot promises only to put
 // string values in the tags field of the database:
@@ -57,6 +58,17 @@ pub struct Idea {
 impl Idea {
     pub fn get_yaml_data(&self) -> Result<Option<Yaml>> {
         Ok(YamlLoader::load_from_str(&self.description)?.into_iter().next())
+    }
+
+    pub fn format_name_with_tags(&self) -> String {
+        let mut buffer = String::new();
+        buffer += &self.name;
+
+        for tag in &self.tags {
+            buffer += &format!(" [{}]", tag);
+        }
+
+        buffer
     }
 }
 
@@ -280,6 +292,7 @@ impl IdeaTree {
         Ok(name)
     }
 
+    // TODO delete this function in favor of Idea.format_name_with_tags()
     pub fn get_name_with_tags(&self, id: i64) -> Result<String> {
         let mut buffer = self.get_name(id)?;
         let tags = self.get_tags(id, false)?;
@@ -419,23 +432,41 @@ impl IdeaTree {
     }
 
     pub fn get_idea(&self, id: i64) -> Result<Idea> { 
-        let idea: Result<Idea> = self.conn.query_row("SELECT * FROM ideas WHERE id=?", &[&id], |row| -> Result<Idea> {
-            let tags = tag_vec_from_yaml(row.get::<i32, String>(3).as_str()) ;
-            let child_ids = id_vec_from_yaml(row.get::<i32, String>(5).as_str());
-
-            Ok(Idea {
-                id,
-                name: row.get(1),
-                description: row.get(2),
-                tags,
-                parent_id: match row.get(4) {
-                    Value::Null => None,
-                    Value::Integer(id) => Some(id),
-                    _ => panic!("The parent_id row of an Idea in the database is neither Null nor an ID!")
-                },
-                child_ids,
-            })
+        let idea = self.conn.query_row("SELECT * FROM ideas WHERE id=?", &[&id], |row| {
+            idea_from_row(row)
         })?;
-        idea
+        Ok(idea)
+    }
+
+    pub fn search_ideas(&self, query_pattern: &String) -> Result<Vec<Idea>> {
+        let full_pattern = format!("%{}%", query_pattern);
+        let mut stmt = self.conn.prepare("SELECT * FROM ideas WHERE name||tags||description LIKE ?")?;
+        let matches = stmt.query_map(&[&full_pattern], |row| {
+            idea_from_row(row)
+        })?;
+        
+        let mut results = Vec::new();
+        for m in matches {
+            results.push(m?);
+        }
+        Ok(results)
+    }
+}
+
+fn idea_from_row(row: &Row) -> Idea {
+    let tags = tag_vec_from_yaml(row.get::<i32, String>(3).as_str()) ;
+    let child_ids = id_vec_from_yaml(row.get::<i32, String>(5).as_str());
+
+    Idea {
+        id: row.get(0),
+        name: row.get(1),
+        description: row.get(2),
+        tags,
+        parent_id: match row.get(4) {
+            Value::Null => None,
+            Value::Integer(id) => Some(id),
+            _ => panic!("The parent_id row of an Idea in the database is neither Null nor an ID!")
+        },
+        child_ids,
     }
 }
