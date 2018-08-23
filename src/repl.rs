@@ -348,18 +348,41 @@ impl Repl {
                     text.chars().next().unwrap()
                 };
                 match first_char {
+                    // A "#{integer}" select expression selects an Idea by its absolute ID.
                     '#' => {
                         let absolute_id: String = text.chars().skip(1).collect();
                         return Ok(absolute_id.parse::<i64>()?);
                     },
+                    // A positive index will select a child ID from the start of the list
                     '0'...'9' => {
                         let child_index = text.parse::<usize>()?;
                         let child_ids = tree.get_child_ids(selected_id, false)?;
-                        if child_ids.len() < child_index {
-                            return Err(Error::DaVinci(format!("Tried to select child {} from an Idea that only has {} children", child_index, child_ids.len())));
+
+                        // Ensure that the child index is valid (non-zero, within range)
+                        if child_index == 0 {
+                            Err(Error::DaVinci(format!("The current Idea has no child at index {}", child_index)))
+                        } else {
+                            match child_ids.get(child_index-1) {
+                                Some(&id) => Ok(id),
+                                None => Err(Error::DaVinci(format!("The current Idea has no child at index {}", child_index)))
+                            }
+                        }
+                    },
+                    // A negative index will select a child ID from the end of the list backward
+                    '-' => {
+                        let child_reverse_index = (&text[1..]).parse::<usize>()?;
+                        let child_ids = tree.get_child_ids(selected_id, false)?;
+
+                        // Ensure that the child index is valid (non-zero, within range)
+                        if child_reverse_index == 0 || child_reverse_index >= child_ids.len() {
+                            Err(Error::DaVinci(format!("The current Idea has no child at index {}", text)))
+                        } else {
+                            match child_ids.get(child_ids.len()-child_reverse_index) {
+                                Some(&id) => Ok(id),
+                                None => Err(Error::DaVinci(format!("The current Idea has no child at index {}", text)))
+                            }
                         }
 
-                        Ok(child_ids[child_index-1])
                     },
                     _ => {
                         let child_ids = tree.get_child_ids(selected_id, true)?;
