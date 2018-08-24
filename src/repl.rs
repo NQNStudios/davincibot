@@ -385,21 +385,10 @@ impl Repl {
 
                     },
                     _ => {
-                        let child_ids = tree.get_child_ids(selected_id, true)?;
-                        let mut selected_id: Option<i64> = None;
+                        let selected_child: Idea = tree.get_child_by_name_hint(selected_id, text.to_string())?;
 
-                        for child_id in child_ids {
-                            if tree.get_name(child_id)? == text {
-                                selected_id = Some(child_id);
-                            }
-                        }
-
-                        if selected_id == None {
-                            return Err(Error::DaVinci(format!("Selected Idea has no child named \"{}\"", text)));
-                        }
-
-                        Ok(selected_id.unwrap())
-                    }
+                        Ok(selected_child.id)
+                   }
                 }
             }
         }

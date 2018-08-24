@@ -438,8 +438,8 @@ impl IdeaTree {
         Ok(idea)
     }
 
-    pub fn search_ideas(&self, query_pattern: &String) -> Result<Vec<Idea>> {
-        let full_pattern = format!("%{}%", query_pattern);
+    pub fn search_ideas(&self, hint: &String) -> Result<Vec<Idea>> {
+        let full_pattern = format!("%{}%", hint);
         let mut stmt = self.conn.prepare("SELECT * FROM ideas WHERE name||tags||description LIKE ?")?;
         let matches = stmt.query_map(&[&full_pattern], |row| {
             idea_from_row(row)
@@ -450,6 +450,22 @@ impl IdeaTree {
             results.push(m?);
         }
         Ok(results)
+    }
+
+    pub fn get_child_by_name_hint(&self, parent_id: i64, hint: String) -> Result<Idea> {
+        let full_pattern = format!("%{}%", hint);
+        let mut stmt = self.conn.prepare("SELECT * FROM ideas WHERE parent_id=? AND name LIKE ?")?;
+        let mut rows = stmt.query(&[&parent_id, &full_pattern])?;
+
+        let idea = match rows.next() {
+            Some(row) => idea_from_row(&row?),
+            None => return Err(Error::DaVinci(format!("No children of Idea #{} match name hint '{}'", parent_id, hint))),
+        };
+
+        match rows.next() {
+            Some(_) => Err(Error::DaVinci(format!("Can't select a child of Idea #{} from name hint '{}' because multiple children match.", parent_id, hint))),
+            None => Ok(idea),
+        }
     }
 }
 
