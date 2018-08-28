@@ -17,6 +17,13 @@ pub fn core_commands() -> HashMap<String, Command> {
                 CommandHandler::new(CommandArgs::Amount(1), print_command_help),
             ],
         });
+        commands.insert("version".to_string(), Command {
+            description: "Display the version of Da Vinci Bot which is installed.",
+            delimiter: None,
+            handlers: vec![
+                CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| { println!("{}", VERSION); Ok(()) }),
+            ],
+        });
         commands.insert("print".to_string(), Command {
             description: "Print the current Idea's summary",
             delimiter: None,

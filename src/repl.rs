@@ -12,6 +12,8 @@ use error::{Result, Error};
 use core_commands::core_commands;
 use core_printers::core_printers;
 
+pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 pub enum CommandArgs {
     Zero,
     Amount(usize),

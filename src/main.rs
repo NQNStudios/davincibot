@@ -3,10 +3,7 @@ use std::path::PathBuf;
 
 extern crate davincibot;
 use davincibot::idea::IdeaTree;
-use davincibot::repl::Repl;
-
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
+use davincibot::repl::{Repl, VERSION};
 
 fn main() {
     let home_path = env::home_dir().unwrap_or(PathBuf::new());
@@ -28,3 +25,4 @@ fn main() {
 }
 
 // TODO Interrupt ^C signal and treat it as "exit" instead of closing program
+// TODO Interrupt ^D signal and close program
