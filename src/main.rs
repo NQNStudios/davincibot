@@ -9,11 +9,11 @@ fn main() {
     let home_path = env::home_dir().unwrap_or(PathBuf::new());
     let home_path = home_path.to_str().unwrap();
 
-    let VERSION_COMMANDS: Vec<&str> = vec!["-v", "-version", "--v", "--version", ];
+    let version_commands: Vec<&str> = vec!["-v", "-version", "--v", "--version", ];
 
     let arg = env::args().skip(1).next().unwrap_or(format!("{}/project.dv", home_path));
 
-    if arg.chars().next() == Some('-') && VERSION_COMMANDS.contains(&arg.as_str()) {
+    if arg.chars().next() == Some('-') && version_commands.contains(&arg.as_str()) {
         println!("Da Vinci Bot version: {}", VERSION);
     } else {
 

@@ -165,19 +165,20 @@ fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()>
 }
 
 fn move_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
-    let parent_id = repl.select_from_expression(tree, &Repl::prompt_for_args(vec!["destination?"])?[0])?;
-    Repl::prompt(" idea to move:", |select_expression| {
+    let select_expression = &repl.prompt_for_args(vec!["destination?"])?[0];
+    let parent_id = repl.select_from_expression(tree, select_expression)?;
+    repl.prompt(" idea to move:", |ref repl, select_expression| {
         let id_to_move = repl.select_from_expression(tree, &select_expression)?;
         tree.set_parent(id_to_move, parent_id)?;
         Ok(true)
-    });
+    }, false); // Don't save idea movement args in history
 
     Ok(())
 }
 
 fn move_one_arg(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let id_to_move = repl.select_from_expression(tree, args[0].as_str())?;
-    let further_arg = Repl::prompt_for_args(vec!["desination?"])?;
+    let further_arg = repl.prompt_for_args(vec!["desination?"])?;
     let parent_selector = further_arg[0].as_str();
     let parent_id = repl.select_from_expression(tree, parent_selector)?;
     tree.set_parent(id_to_move, parent_id)
@@ -195,16 +196,16 @@ fn tag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> {
 }
 
 fn tag_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
-    let tags: Vec<String> = Repl::prompt_for_args(vec!["tags?"])?[0].split(" ").map(|tag| tag.to_string()).collect();
+    let tags: Vec<String> = repl.prompt_for_args(vec!["tags?"])?[0].split(" ").map(|tag| tag.to_string()).collect();
 
     // Collect all the ids to tag without applying any,
     // because applying a hide tag to one will change the child indices of the
     // others.
     let mut ids_to_tag = Vec::new();
-    Repl::prompt(" tag idea ->", |select_expression| {
+    repl.prompt(" tag idea ->", |ref repl, select_expression| {
         ids_to_tag.push(repl.select_from_expression(tree, select_expression)?);
         Ok(true)
-    });
+    }, false); // Don't store this input in history
     for id_to_tag in ids_to_tag {
         tree.add_tags(id_to_tag, tags.clone())?;
     }
@@ -260,10 +261,10 @@ fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
 }
 
 fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
-    Repl::prompt(" new idea ->", |name: &str| {
+    repl.prompt(" new idea ->", |ref repl, name: &str| {
         tree.create_idea(repl.selected_id, name.to_string(), None)?;
         Ok(true)
-    });
+    }, false); // Don't save Idea names in the command history
 
     Ok(())
 }
@@ -295,7 +296,7 @@ fn rename_any(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result
 fn rename_selected(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let new_name = match args.into_iter().next() {
         Some(new_name) => new_name,
-        None => match Repl::prompt_for_args(vec!["new name?"])?.into_iter().next() {
+        None => match repl.prompt_for_args(vec!["new name?"])?.into_iter().next() {
             Some(new_name) => new_name,
             None => return Err(Error::DaVinci("Couldnn't get a new name for the idea".to_string())),
         }

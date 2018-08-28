@@ -1,8 +1,10 @@
-use std::io::Write;
-use std::io;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::borrow::Borrow;
+use std::process::exit;
+
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
 
 use yaml_rust::Yaml;
 
@@ -78,6 +80,7 @@ pub struct Command {
 
 pub struct Repl {
     pub selected_id: i64,
+    rl: Editor<()>,
     commands: HashMap<String, Command>,
     printers: HashMap<String, IdeaPrinter>,
 }
@@ -88,7 +91,10 @@ impl Repl {
             selected_id: 1,
             commands: HashMap::new(),
             printers: HashMap::new(),
+            rl: Editor::<()>::new(),
         };
+        // TODO set up rl history file
+        // TODO add commands to history log
 
         repl.register_commands(core_commands());
         repl.register_printers(core_printers());
@@ -121,41 +127,50 @@ impl Repl {
 
     // Allow the user to keep entering values for a prompt as many times
     // as they want until they type "exit"
-    pub fn prompt<C>(prefix: &str, mut callback: C)
-        where C: FnMut(&str) -> Result<bool>
+    pub fn prompt<C>(&mut self, prefix: &str, mut callback: C, add_history: bool) -> Result<()>
+        where C: FnMut(&mut Repl, &str) -> Result<bool>
     {
         loop {
-            print!("{} ", prefix);
-            io::stdout().flush().unwrap();
-            let mut input = String::new();
-            match io::stdin().read_line(&mut input) {
-                Ok(_) => {
-                    if input == "exit\n" {
+            // TODO if add_history is false, don't allow up and down
+            // to reuse lines from history, either.
+            let input = self.rl.readline(&format!("{} ", prefix));
+            match input {
+                Ok(input) => {
+                    if input == "exit" {
                         break;
                     }
                     else {
-                        match callback(&mut input.trim()) {
+                        if add_history {
+                            self.rl.add_history_entry(input.trim());
+                        }
+
+                        match callback(self, &mut input.trim()) {
                             Ok(true) => { },
                             Ok(false) => break,
                             Err(e) => println!("Error processing console input: {:?}", e),
                         }
                     }
-                }
+                },
+                Err(ReadlineError::Interrupted) => break,
+                Err(ReadlineError::Eof) => exit(0),
                 Err(e) => {
                     println!("Error getting console input: {:?}", e);
                     continue
                 },
             };
         }
+
+        Ok(())
     }
 
-    pub fn prompt_for_args(arg_names: Vec<&str>) -> Result<Vec<String>> {
+    pub fn prompt_for_args(&mut self, arg_names: Vec<&str>) -> Result<Vec<String>> {
         let mut arg_values = Vec::new();
         for arg_name in &arg_names {
-            Repl::prompt(&format!(" {}", arg_name), |arg_value| {
+            self.prompt(&format!(" {}", arg_name), |ref _repl, arg_value| {
                 arg_values.push(arg_value.to_string());
                 Ok(false)
-            });
+            }, false);
+            // Don't save prompt_for_args input in command history
         }
 
         if arg_values.len() != arg_names.len() {
@@ -170,15 +185,13 @@ impl Repl {
         self.run_command(tree, "select @".to_string());
 
         // Read
-        Repl::prompt("$", |input_line| {
+        self.prompt("$", |ref mut repl, input_line| {
             // Execute
-            self.run_command(tree, input_line.to_string());
+            repl.run_command(tree, input_line.to_string());
 
             // Loop
             Ok(true)
-        });
-
-        // TODO confirm before quitting Davincibot?
+        }, true); // Do save commands in the history file
     }
 
     // TODO this is a janky helper function that doesn't account for terminal width
