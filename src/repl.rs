@@ -136,15 +136,18 @@ impl Repl {
             let input = self.rl.readline(&format!("{} ", prefix));
             match input {
                 Ok(input) => {
-                    if input == "exit" {
+                    let mut line = input.trim();
+                    println!("{}", line);
+                    if line == "exit" {
                         break;
                     }
                     else {
+                        println!("Not exit:{}", line);
                         if add_history {
-                            self.rl.add_history_entry(input.trim());
+                            self.rl.add_history_entry(line);
                         }
 
-                        match callback(self, &mut input.trim()) {
+                        match callback(self, &mut line) {
                             Ok(true) => { },
                             Ok(false) => break,
                             Err(e) => println!("Error processing console input: {:?}", e),

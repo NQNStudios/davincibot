@@ -33,7 +33,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "davincibot"
-version = "0.0.11"
+version = "0.0.12"
 dependencies = [
  "conv 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "edit-rs 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
