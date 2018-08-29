@@ -3,17 +3,26 @@ use std::path::PathBuf;
 
 extern crate davincibot;
 use davincibot::idea::IdeaTree;
-use davincibot::repl::Repl;
+use davincibot::repl::{Repl, VERSION};
 
 fn main() {
     let home_path = env::home_dir().unwrap_or(PathBuf::new());
     let home_path = home_path.to_str().unwrap();
-    let filename = env::args().skip(1).next().unwrap_or(format!("{}/project.dv", home_path));
 
-    println!("Loading Da Vinci file: {}", filename);
-    let mut tree = IdeaTree::open(filename).expect("Failed to create Da Vinci tree."); 
+    let version_commands: Vec<&str> = vec!["-v", "-version", "--v", "--version", ];
 
-    Repl::new().run(&mut tree);
+    let arg = env::args().skip(1).next().unwrap_or(format!("{}/project.dv", home_path));
+
+    if arg.chars().next() == Some('-') && version_commands.contains(&arg.as_str()) {
+        println!("Da Vinci Bot version: {}", VERSION);
+    } else {
+
+        println!("Loading Da Vinci file: {}", arg);
+        let mut tree = IdeaTree::open(arg).expect("Failed to create Da Vinci tree."); 
+
+        Repl::new().run(&mut tree);
+    }
 }
 
 // TODO Interrupt ^C signal and treat it as "exit" instead of closing program
+// TODO Interrupt ^D signal and close program
