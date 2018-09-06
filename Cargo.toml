@@ -15,4 +15,4 @@ yaml-rust = "0.4"
 rusqlite = "0.13.0"
 edit-rs = "0.1.1"
 conv = "0.3.3"
-rustyline = { path = "rustyline" }
+rustyline = { path = "rustyline", version="2.0.0" }

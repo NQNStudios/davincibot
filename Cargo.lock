@@ -33,12 +33,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "davincibot"
-version = "0.0.12"
+version = "0.0.13"
 dependencies = [
  "conv 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "edit-rs 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusqlite 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustyline 2.0.0 (git+https://github.com/kkawakam/rustyline)",
+ "rustyline 2.0.0",
  "yaml-rust 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -147,7 +147,6 @@ dependencies = [
 [[package]]
 name = "rustyline"
 version = "2.0.0"
-source = "git+https://github.com/kkawakam/rustyline#de8943b76644da7db526903a5debc3d3a231455e"
 dependencies = [
  "dirs 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.42 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -263,7 +262,6 @@ dependencies = [
 "checksum pkg-config 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)" = "6a52e4dbc8354505ee07e484ab07127e06d87ca6fa7f0a516a2b294e5ad5ad16"
 "checksum redox_syscall 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "c214e91d3ecf43e9a4e41e578973adeb14b474f2bee858742d127af75a0112b1"
 "checksum rusqlite 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d9409d78a5a9646685688266e1833df8f08b71ffcae1b5db6c1bfb5970d8a80f"
-"checksum rustyline 2.0.0 (git+https://github.com/kkawakam/rustyline)" = "<none>"
 "checksum subprocess 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "924dfda3964577061f3bc7d3c64ba43f5453a10cd844ef411e004d0def79b6f9"
 "checksum time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "d825be0eb33fda1a7e68012d51e9c7f451dc1a69391e7fdc197060bb8c56667b"
 "checksum unicode-segmentation 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "aa6024fc12ddfd1c6dbc14a80fa2324d4568849869b779f6bd37e5e4c03344d1"
