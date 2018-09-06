@@ -127,7 +127,7 @@ impl Repl {
 
     // Allow the user to keep entering values for a prompt as many times
     // as they want until they type "exit"
-    pub fn prompt<C>(&mut self, prefix: &str, mut callback: C, add_history: bool) -> Result<()>
+    pub fn prompt<C>(&mut self, prefix: &str, mut callback: C, add_history: bool)
         where C: FnMut(&mut Repl, &str) -> Result<bool>
     {
         loop {
@@ -162,8 +162,6 @@ impl Repl {
                 },
             };
         }
-
-        Ok(())
     }
 
     pub fn prompt_for_args(&mut self, arg_names: Vec<&str>) -> Result<Vec<String>> {
