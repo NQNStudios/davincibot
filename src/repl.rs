@@ -79,16 +79,28 @@ pub struct Command {
 }
 
 pub struct Repl {
-    pub selected_id: i64,
+    selected_id_stack: Vec<i64>,
     rl: Editor<()>,
     commands: HashMap<String, Command>,
     printers: HashMap<String, IdeaPrinter>,
 }
 
 impl Repl {
+    pub fn selected_id(&self) -> i64 {
+        self.selected_id_stack.last().cloned().unwrap_or(1)
+    }
+
+    pub fn select(&mut self, id: i64, tree: &IdeaTree) -> Result<()> {
+        // TODO validate that the ID is valid, not out of range
+        self.selected_id_stack.push(id);
+        self.print(tree)?;
+
+        Ok(())
+    }
+
     pub fn new() -> Repl {
         let mut repl = Repl { 
-            selected_id: 1,
+            selected_id_stack: vec![],
             commands: HashMap::new(),
             printers: HashMap::new(),
             rl: Editor::<()>::new(),
@@ -137,12 +149,10 @@ impl Repl {
             match input {
                 Ok(input) => {
                     let mut line = input.trim();
-                    println!("{}", line);
                     if line == "exit" {
                         break;
                     }
                     else {
-                        println!("Not exit:{}", line);
                         if add_history {
                             self.rl.add_history_entry(line);
                         }
@@ -181,6 +191,25 @@ impl Repl {
         Ok(arg_values)
     }
 
+    pub fn prompt_to_select_from(&mut self, ideas: &Vec<Idea>, tree: &IdeaTree) {
+        for (idx, idea) in ideas.iter().enumerate() {
+            println!("{}. {} (#{})", idx+1, idea.format_name_with_tags(), idea.id);
+        }
+
+        if let Ok(args) = self.prompt_for_args(vec![&"select one?"]) {
+            if let Ok(index) = args[0].parse::<usize>() {
+                if index == 0 || index > ideas.len() {
+                    println!("{} is not a search result.", index);
+                }
+                else if let Some(idea) = ideas.get(index-1) {
+                    if let Err(e) = self.select(idea.id, tree) {
+                        println!("Error: {:?}", e);
+                    }
+                }
+            }
+        }
+    }
+
 
     pub fn run(&mut self, tree: &mut IdeaTree) {
         self.run_command(tree, "select @".to_string());
@@ -203,9 +232,9 @@ impl Repl {
     // TODO Ideas should be printed in a prettier form somehow, with line
     // wrapping
     pub fn print(&self, tree: &IdeaTree) -> Result<()> {
-        let idea = tree.get_idea(self.selected_id)?;
+        let idea = tree.get_idea(self.selected_id())?;
 
-        let description_limit = match tree.get_meta_idea(self.selected_id, &"settings")? {
+        let description_limit = match tree.get_meta_idea(self.selected_id(), &"settings")? {
             Some(settings) => {
                 if let Some(settings_yaml) = settings.get_yaml_data()? {
                     // TODO allow setting a maximum line count for the
@@ -260,7 +289,7 @@ impl Repl {
             let always_inherited = idea_printer.always_inherited;
             let printer_implementation: &PrinterImplementation = idea_printer.implementation.borrow();
 
-            if tree.get_tags(self.selected_id, always_inherited)?.contains(&idea_type) {
+            if tree.get_tags(self.selected_id(), always_inherited)?.contains(&idea_type) {
                 (*printer_implementation)(&idea, tree)?;
                 self.print_hr();
             }
@@ -280,7 +309,7 @@ impl Repl {
         let mut command = parts.next().unwrap().to_string();
 
         if command.len() == 1 {
-            command = match tree.get_meta_idea(self.selected_id, &"shortcuts").unwrap_or(None) {
+            command = match tree.get_meta_idea(self.selected_id(), &"shortcuts").unwrap_or(None) {
                 Some(shortcuts) => {
                     if let Some(shortcuts_yaml) = shortcuts.get_yaml_data().unwrap_or(None) {
                         match &shortcuts_yaml[command.as_str()] {
@@ -411,7 +440,7 @@ impl Repl {
     }
 
     pub fn select_from_expression(&self, tree: &IdeaTree, expression: &str) -> Result<i64> {
-        let mut temp_selected = self.selected_id;
+        let mut temp_selected = self.selected_id();
         for part in expression.split_terminator('/') {
             temp_selected = Repl::select_from_expression_internal(temp_selected, tree, part)?;
         }

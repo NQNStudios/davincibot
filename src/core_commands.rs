@@ -158,8 +158,8 @@ fn print_command_help(repl: &mut Repl, _tree: &mut IdeaTree, args: Vec<String>) 
 }
 
 fn select(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    repl.selected_id = repl.select_from_expression(tree, &args[0])?;
-    repl.print(tree)?;
+    let id_to_select = repl.select_from_expression(tree, &args[0])?;
+    repl.select(id_to_select, tree)?;
 
     Ok(())
 }
@@ -192,7 +192,7 @@ fn move_both_args(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Re
 }
 
 fn tag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> {
-    tree.add_tags(repl.selected_id, tags)
+    tree.add_tags(repl.selected_id(), tags)
 }
 
 fn tag_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
@@ -214,15 +214,15 @@ fn tag_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Res
 }
 
 fn untag(repl: &mut Repl, tree: &mut IdeaTree, tags: Vec<String>) -> Result<()> {
-    tree.remove_tags(repl.selected_id, tags)
+    tree.remove_tags(repl.selected_id(), tags)
 }
 
 fn cleartags(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
-    tree.clear_tags(repl.selected_id)
+    tree.clear_tags(repl.selected_id())
 }
 
 fn list(repl: &Repl, tree: &IdeaTree, show_all: bool) -> Result<()> {
-    let shown_child_ids = tree.get_child_ids(repl.selected_id, false)?;
+    let shown_child_ids = tree.get_child_ids(repl.selected_id(), false)?;
 
     for (child_idx, id) in shown_child_ids.iter().enumerate() {
         let child= tree.get_name_with_tags(*id)?;
@@ -231,7 +231,7 @@ fn list(repl: &Repl, tree: &IdeaTree, show_all: bool) -> Result<()> {
     }
 
     if show_all {
-        let mut hidden_child_ids = tree.get_child_ids(repl.selected_id, true)?;
+        let mut hidden_child_ids = tree.get_child_ids(repl.selected_id(), true)?;
         hidden_child_ids.retain(|id| !shown_child_ids.contains(id));
 
         for id in hidden_child_ids {
@@ -254,7 +254,7 @@ fn list_with_tags(repl: &Repl, tree: &IdeaTree, tags: Vec<String>) -> Result<()>
 
 fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let name = &args[0];
-    let id = tree.create_idea(repl.selected_id, name.to_string(), None)?;
+    let id = tree.create_idea(repl.selected_id(), name.to_string(), None)?;
     repl.run_command(tree, format!("select #{}", id));
 
     Ok(())
@@ -262,7 +262,7 @@ fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
 
 fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
     repl.prompt(" new idea ->", |ref repl, name: &str| {
-        tree.create_idea(repl.selected_id, name.to_string(), None)?;
+        tree.create_idea(repl.selected_id(), name.to_string(), None)?;
         Ok(true)
     }, false); // Don't save Idea names in the command history
 
@@ -272,7 +272,7 @@ fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Res
 fn describe(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
     let target_id = match args.into_iter().next() {
         Some(expression) => repl.select_from_expression(tree, &expression)?,
-        None => repl.selected_id,
+        None => repl.selected_id(),
     };
     let existing_description = tree.get_description(target_id)?;
 
@@ -302,7 +302,7 @@ fn rename_selected(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> R
         }
     };
 
-    tree.set_name(repl.selected_id, &new_name)
+    tree.set_name(repl.selected_id(), &new_name)
 }
 
 fn search(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
@@ -313,9 +313,7 @@ fn search(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()>
     if matches.len() == 0 {
         println!("No matches for query '{}'", query);
     } else {
-        for idea in matches {
-            println!("#{}: {}", idea.id, idea.format_name_with_tags());
-        }
+        repl.prompt_to_select_from(&matches, tree);
     }
 
     Ok(())
