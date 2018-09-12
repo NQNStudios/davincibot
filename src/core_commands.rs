@@ -252,17 +252,40 @@ fn list_with_tags(repl: &Repl, tree: &IdeaTree, tags: Vec<String>) -> Result<()>
     Ok(())
 }
 
+// Parse the desired parent ID and name of an add expression
+// TODO maybe this could go in repl
+fn evaluate_add_expression(repl: &mut Repl, tree: &mut IdeaTree, expression: String) -> Result<(i64, String)> {
+    // If the idea name contains slashes, then it is selecting a different
+    // parent for the new idea
+    let parts: Vec<&str> = expression.rsplitn(2, "/").collect();
+
+    let (parent_exp, name) = match parts.len() {
+        1 => ("", parts[0]),
+        2 => (parts[1], parts[0]), // These indices are reverse from expected because of rsplit
+        _ => panic!("rsplitn returned > n components"),
+    };
+
+    let mut parent_id = repl.selected_id();
+    if parent_exp.len() > 0 {
+        parent_id = repl.select_from_expression(tree, parent_exp)?;
+    }
+
+    Ok((parent_id, name.to_string()))
+}
+
 fn add(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
-    let name = &args[0];
-    let id = tree.create_idea(repl.selected_id(), name.to_string(), None)?;
+    let (parent_id, name) = evaluate_add_expression(repl, tree, args[0].clone())?;
+
+    let id = tree.create_idea(parent_id, name.to_string(), None)?;
     repl.run_command(tree, format!("select #{}", id));
 
     Ok(())
 }
 
 fn add_multiple(repl: &mut Repl, tree: &mut IdeaTree, _args: Vec<String>) -> Result<()> {
-    repl.prompt(" new idea ->", |ref repl, name: &str| {
-        tree.create_idea(repl.selected_id(), name.to_string(), None)?;
+    repl.prompt(" new idea ->", |ref mut repl, name: &str| {
+        let (parent_id, name) = evaluate_add_expression(*repl, tree, name.to_string())?;
+        tree.create_idea(parent_id, name.to_string(), None)?;
         Ok(true)
     }, false); // Don't save Idea names in the command history
 
@@ -294,15 +317,27 @@ fn rename_any(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result
 }
 
 fn rename_selected(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let old_name = tree.get_name(repl.selected_id())?;
     let new_name = match args.into_iter().next() {
         Some(new_name) => new_name,
-        None => match repl.prompt_for_args(vec!["new name?"])?.into_iter().next() {
-            Some(new_name) => new_name,
-            None => return Err(Error::DaVinci("Couldnn't get a new name for the idea".to_string())),
-        }
+        None => get_input(&old_name)?
     };
 
-    tree.set_name(repl.selected_id(), &new_name)
+    if old_name != new_name{
+        // TODO this should have to run all other Idea name validations
+        if new_name.contains('\n') || new_name.contains('\r') {
+            println!("Idea name cannot include newline");
+        }
+        else {
+            println!("Updating name.");
+            tree.set_name(repl.selected_id(), &new_name)?;
+        }
+    }
+    else {
+        println!("Name unchanged.");
+    }
+
+    Ok(())
 }
 
 fn search(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
