@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path,PathBuf};
 
 extern crate davincibot;
 use davincibot::idea::IdeaTree;
@@ -11,7 +11,14 @@ fn main() {
 
     let version_commands: Vec<&str> = vec!["-v", "-version", "--v", "--version", ];
 
-    let arg = env::args().skip(1).next().unwrap_or(format!("{}/project.dv", home_path));
+    let default_tree_file = match Path::new(&format!("{}/yggdrasil/", home_path)).exists() {
+        true => "yggdrasil/project.dv",
+        false => "project.dv",
+    };
+    let default_tree_file = format!("{}/{}", home_path, default_tree_file);
+
+    let arg = env::args().skip(1).next().unwrap_or(default_tree_file);
+    println!("{}", arg);
 
     if arg.chars().next() == Some('-') && version_commands.contains(&arg.as_str()) {
         println!("Da Vinci Bot version: {}", VERSION);
