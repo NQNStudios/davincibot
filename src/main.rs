@@ -14,7 +14,10 @@ fn main() {
     let version_commands: Vec<&str> = vec!["-v", "-version", "--v", "--version", ];
 
     let default_tree_file = match Path::new(&format!("{}/yggdrasil/", home_path)).exists() {
-        true => "yggdrasil/project.dv",
+        true => {
+            println!("WARNING! Opening dv file from a repository. Have you pulled?");
+            "yggdrasil/project.dv"
+        },
         false => "project.dv",
     };
     let default_tree_file = format!("{}/{}", home_path, default_tree_file);
