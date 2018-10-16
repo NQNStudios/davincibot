@@ -299,7 +299,11 @@ fn describe(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<(
     };
     let existing_description = tree.get_description(target_id)?;
 
-    let new_description = get_input(&existing_description)?;
+    // TODO edit_rs get_input() seems not to work with rustyline
+    // let new_description = get_input(&existing_description)?;
+
+    println!("Description was: {}", existing_description);
+    let new_description = repl.prompt_for_args(vec!["description"])?[0].clone();
 
     if new_description != existing_description {
         println!("Updating description.");
