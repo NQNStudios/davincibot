@@ -1,12 +1,14 @@
 use std::env;
 use std::path::{Path,PathBuf};
 
+extern crate dirs;
+
 extern crate davincibot;
 use davincibot::idea::IdeaTree;
 use davincibot::repl::{Repl, VERSION};
 
 fn main() {
-    let home_path = env::home_dir().unwrap_or(PathBuf::new());
+    let home_path = dirs::home_dir().unwrap_or(PathBuf::new());
     let home_path = home_path.to_str().unwrap();
 
     let version_commands: Vec<&str> = vec!["-v", "-version", "--v", "--version", ];
