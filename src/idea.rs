@@ -515,6 +515,8 @@ fn idea_to_org_string(idea: Idea, tree: &IdeaTree, depth: usize) -> Result<Strin
 
     // description
     if idea.description.len() > 0 {
+        // TODO tab each line of the description so Markdown lists don't
+        // register as top-level org elements
         result += &format!("\n{}\n\n", idea.description);
     }
 
