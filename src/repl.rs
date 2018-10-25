@@ -93,7 +93,7 @@ impl Repl {
     pub fn select(&mut self, id: i64, tree: &IdeaTree) -> Result<()> {
         // TODO validate that the ID is valid, not out of range
         self.selected_id_stack.push(id);
-        self.print(tree)?;
+        self.print(tree, true)?;
 
         Ok(())
     }
@@ -231,26 +231,30 @@ impl Repl {
 
     // TODO Ideas should be printed in a prettier form somehow, with line
     // wrapping
-    pub fn print(&self, tree: &IdeaTree) -> Result<()> {
+    pub fn print(&self, tree: &IdeaTree, limited_description: bool) -> Result<()> {
         let idea = tree.get_idea(self.selected_id())?;
 
-        let description_limit = match tree.get_meta_idea(self.selected_id(), &"settings")? {
-            Some(settings) => {
-                if let Some(settings_yaml) = settings.get_yaml_data()? {
-                    // TODO allow setting a maximum line count for the
-                    // description output as well
+        let description_limit = if limited_description {
+            match tree.get_meta_idea(self.selected_id(), &"settings")? {
+                Some(settings) => {
+                    if let Some(settings_yaml) = settings.get_yaml_data()? {
+                        // TODO allow setting a maximum line count for the
+                        // description output as well
 
-                    match settings_yaml["max_description"] {
-                        Yaml::BadValue => idea.description.len(),
-                        Yaml::Integer(max) => max as usize,
-                        _ => return Err(Error::DaVinci("max_description setting is not set to an integer!".to_string())),
+                        match settings_yaml["max_description"] {
+                            Yaml::BadValue => idea.description.len(),
+                            Yaml::Integer(max) => max as usize,
+                            _ => return Err(Error::DaVinci("max_description setting is not set to an integer!".to_string())),
+                        }
                     }
-                }
-                else {
-                    idea.description.len()
-                }
-            },
-            None => idea.description.len(),
+                    else {
+                        idea.description.len()
+                    }
+                },
+                None => idea.description.len(),
+            }
+        } else {
+            idea.description.len()
         };
 
         self.print_hr();

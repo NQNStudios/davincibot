@@ -27,7 +27,7 @@ pub fn core_commands() -> HashMap<String, Command> {
         commands.insert("print".to_string(), Command {
             description: "Print the current Idea's summary",
             delimiter: None,
-            handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| repl.print(tree))],
+            handlers: vec![CommandHandler::new(CommandArgs::Zero, |repl, tree, _args| repl.print(tree, false))],
         });
         commands.insert("listall".to_string(), Command {
             description: "List all children of the current Idea, including hidden ones.",
@@ -127,16 +127,28 @@ pub fn core_commands() -> HashMap<String, Command> {
                 CommandHandler::new(CommandArgs::Amount(1), search),
             ],
         });
+
+        // TODO export command with org mode
+        commands.insert("export".to_string(), Command {
+            description: "Export the current Idea into another file format (such as Emacs org file)",
+            delimiter: None,
+            handlers: vec![
+                CommandHandler::new(CommandArgs::Amount(1), export),
+            ],
+        });
+
+        // TODO loop through lines of the description and prompt for select expressions to add them as children. Blank select expression = don't turn into an idea. Once this is done, prompt asking whether to archive this idea. Also, while looping, should probably remove lines as they get ideaifyied?
         // TODO reordering children
         // TODO sorting children -- lexicographically?
         // TODO add n ideas
         // TODO pipe accidental git commands back to the shell, lol?
-        // TODO ignore command that creates an .ignore child if necessary and
-        // adds the args as tags. (Should it automatically overwrite inherited
-        // ignore tags? i.e. equivalent to typing `noignore` first?)
         // TODO noignore command that adds an empty .ignore child, or clears
         // existing .ignore child's tags
         // TODO generic form of ignore command with syntax meta [meta_type]
+
+        // TODO ignore command that creates an .ignore child if necessary and
+        // adds the args as tags. (Should it automatically overwrite inherited
+        // ignore tags? i.e. equivalent to typing `noignore` first?)
         // [meta_tag] i.e meta ignore done
     }
 
@@ -356,4 +368,9 @@ fn search(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()>
     }
 
     Ok(())
+}
+
+fn export(repl: &mut Repl, tree: &mut IdeaTree, args: Vec<String>) -> Result<()> {
+    let filename = args.into_iter().next().unwrap();
+    tree.export_idea(repl.selected_id(), &filename)
 }

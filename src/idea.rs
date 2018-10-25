@@ -10,6 +10,8 @@ use rusqlite::types::{Value, Null, ToSql};
 
 use error::*;
 
+use std::fs::OpenOptions;
+use std::io::Write;
 
 // NOTE unwrap is used below because Da Vinci Bot promises only to put
 // string values in the tags field of the database:
@@ -467,6 +469,63 @@ impl IdeaTree {
             None => Ok(idea),
         }
     }
+
+    pub fn export_idea(&self, id: i64, filename: &String) -> Result<()> {
+        let extension = {
+            let dot_index = filename.rfind('.')?;
+            &filename[dot_index..]
+        };
+
+        {
+            let mut file = OpenOptions::new().write(true).
+                create(true).truncate(true).open(filename)?;
+
+            let selected_idea = self.get_idea(id)?;
+
+            match extension {
+                ".org" => {
+                    file.write(idea_to_org_string(selected_idea, self, 1)?.as_bytes());
+                }
+                _ => {
+                    return Err(Error::DaVinci(format!("Requested export to unsupported format '{}'", extension)));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+}
+
+fn idea_to_org_string(idea: Idea, tree: &IdeaTree, depth: usize) -> Result<String> {
+    let mut result = "".to_string();
+    for i in 0..depth {
+        result += "*";
+    }
+    result += " ";
+
+    // tags capitalized
+    for tag in idea.tags {
+        let mut upper = tag.clone();
+        upper.make_ascii_uppercase();
+        result += &(upper + " ");
+    }
+
+    result += &(idea.name + "\n");
+
+    // description
+    if idea.description.len() > 0 {
+        result += &format!("\n{}\n\n", idea.description);
+    }
+
+    // children
+    for id in idea.child_ids {
+        let child = tree.get_idea(id)?;
+
+        result += &idea_to_org_string(child, tree, depth+1)?;
+    }
+
+    Ok(result)
 }
 
 fn idea_from_row(row: &Row) -> Idea {

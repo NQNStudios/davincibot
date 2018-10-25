@@ -1,3 +1,5 @@
+#![feature(try_trait)]
+
 extern crate rusqlite;
 extern crate edit_rs;
 extern crate conv;

@@ -1,3 +1,4 @@
+#![feature(try_trait)]
 use std::env;
 use std::path::{Path,PathBuf};
 

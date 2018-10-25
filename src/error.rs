@@ -11,6 +11,20 @@ pub enum Error {
     EditRS(edit_rs::Error),
     Utf8(std::str::Utf8Error),
     Yaml(yaml_rust::ScanError),
+    IO(std::io::Error),
+    None(std::option::NoneError),
+}
+
+impl From<std::option::NoneError> for Error {
+    fn from(e: std::option::NoneError) -> Self {
+        self::Error::None(e)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        self::Error::IO(e)
+    }
 }
 
 impl From<yaml_rust::ScanError> for Error {
