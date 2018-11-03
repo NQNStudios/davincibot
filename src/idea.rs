@@ -531,8 +531,8 @@ fn idea_to_org_string(idea: Idea, tree: &IdeaTree, depth: usize) -> Result<Strin
 }
 
 fn idea_from_row(row: &Row) -> Idea {
-    let tags = tag_vec_from_yaml(row.get::<i32, String>(3).as_str()) ;
-    let child_ids = id_vec_from_yaml(row.get::<i32, String>(5).as_str());
+    let tags = tag_vec_from_yaml(row.get::<usize, String>(3).as_str()) ;
+    let child_ids = id_vec_from_yaml(row.get::<usize, String>(5).as_str());
 
     Idea {
         id: row.get(0),
