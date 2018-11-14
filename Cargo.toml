@@ -17,5 +17,5 @@ conv = "0.3.3"
 rustyline= "2.0.1"
 dirs = "1.0.4"
 [dependencies.rusqlite]
-version = "0.13.0"
+version = "0.14"
 features = ["bundled"]
