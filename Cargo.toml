@@ -12,8 +12,10 @@ license="GPL-3.0"
 version = "0.0.18"
 [dependencies]
 yaml-rust = "0.4"
-rusqlite = "0.14"
 edit-rs = "0.1.1"
 conv = "0.3.3"
 rustyline= "2.0.1"
 dirs = "1.0.4"
+[dependencies.rusqlite]
+version = "0.14"
+features = ["bundled"]
